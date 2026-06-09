@@ -1,0 +1,78 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.installed.cfg
+*.egg
+
+# ===== Ambientes virtuais =====
+.venv/
+venv/
+env/
+ENV/
+.conda/
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# ===== Dados (não versionar dados brutos/grandes) =====
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+!data/**/.gitkeep
+*.fasta
+*.fa
+*.fastq
+*.fq
+*.gz
+*.zip
+*.tar
+*.parquet
+*.h5
+*.hdf5
+
+# ===== Modelos / checkpoints =====
+results/checkpoints/*
+!results/checkpoints/.gitkeep
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# ===== Resultados grandes =====
+results/figures/*
+results/metrics/*
+results/rankings/*
+!results/**/.gitkeep
+
+# ===== Logs e cache =====
+*.log
+logs/
+.cache/
+wandb/
+mlruns/
+.trackio/
+lightning_logs/
+
+# ===== Sistema operacional =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+
+# ===== Segredos =====
+.env
+*.key
+secrets.yaml

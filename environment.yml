@@ -1,0 +1,49 @@
+# ============================================================
+# JEPA-Spillover — ambiente Conda
+# Criar com:  conda env create -f environment.yml
+# Ativar com: conda activate jepa-spillover
+# ============================================================
+name: jepa-spillover
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - pip>=24.0
+  # --- Núcleo numérico / dados ---
+  - numpy>=1.26
+  - pandas>=2.1
+  - scipy>=1.11
+  - pyarrow>=14.0
+  # --- Bioinformática ---
+  - biopython>=1.83
+  - blast            # alinhamento/identidade (curadoria, dedup por similaridade)
+  - cd-hit           # remoção de redundância de sequências
+  - mafft            # alinhamento múltiplo (opcional)
+  # --- ML clássico ---
+  - scikit-learn>=1.4
+  - faiss-cpu>=1.7.4
+  # --- Visualização ---
+  - umap-learn>=0.5.5
+  - matplotlib>=3.8
+  - seaborn>=0.13
+  - plotly>=5.18
+  # --- Utilidades ---
+  - pyyaml>=6.0
+  - tqdm>=4.66
+  - requests>=2.31
+  - jupyterlab
+  # --- pip: o que não está nos canais conda ---
+  - pip:
+      - torch>=2.2
+      - einops>=0.7
+      - shap>=0.44
+      - streamlit>=1.31
+      - trackio>=0.0.7
+      - typer>=0.9
+      - rich>=13.7
+      - huggingface_hub>=0.23
+      - datasets>=2.18
+      - transformers>=4.40
+      - ruff>=0.3
+      - pytest>=8.0

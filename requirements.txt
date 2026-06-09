@@ -1,0 +1,54 @@
+# ============================================================
+# JEPA-Spillover — dependências de execução
+# Python >= 3.10
+# ============================================================
+
+# --- Núcleo numérico / dados ---
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+pyarrow>=14.0
+
+# --- Bioinformática ---
+biopython>=1.83
+
+# --- Deep learning ---
+torch>=2.2
+einops>=0.7
+
+# --- ML clássico / baselines ---
+scikit-learn>=1.4
+
+# --- Embeddings / busca vetorial ---
+faiss-cpu>=1.7.4
+
+# --- Redução de dimensionalidade / visualização ---
+umap-learn>=0.5.5
+matplotlib>=3.8
+seaborn>=0.13
+plotly>=5.18
+
+# --- Interpretabilidade ---
+shap>=0.44
+
+# --- Dashboard ---
+streamlit>=1.31
+
+# --- Acompanhamento de experimentos ---
+trackio>=0.0.7
+
+# --- Configuração / CLI / utilidades ---
+pyyaml>=6.0
+typer>=0.9
+rich>=13.7
+tqdm>=4.66
+requests>=2.31
+
+# --- Hugging Face ---
+huggingface_hub>=0.23
+datasets>=2.18
+transformers>=4.40
+
+# --- Qualidade de código (dev) ---
+pytest>=8.0
+ruff>=0.3

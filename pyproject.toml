@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jepa-spillover"
+version = "0.1.0"
+description = "Aprendizado preditivo em espaço latente (JEPA) para vigilância genômica de vírus com potencial zoonótico."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Gabriel Bezerra Motta Câmara" },
+]
+keywords = [
+    "JEPA", "bioinformática", "vigilância genômica", "spillover",
+    "zoonose", "deep learning", "self-supervised learning", "virologia",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/SEU_USUARIO/jepa-spillover"
+Repository = "https://github.com/SEU_USUARIO/jepa-spillover"
+"Hugging Face" = "https://huggingface.co/SEU_USUARIO/jepa-spillover"
+
+[project.scripts]
+jepa-spillover = "jepa_spillover.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

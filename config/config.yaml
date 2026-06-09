@@ -1,0 +1,114 @@
+# ============================================================
+# JEPA-Spillover — configuração central do pipeline
+# Todos os scripts leem este arquivo (via src/jepa_spillover/config.py)
+# ============================================================
+
+project:
+  name: jepa-spillover
+  seed: 42
+  device: auto            # auto | cpu | cuda
+
+paths:
+  data_raw: data/raw
+  data_interim: data/interim
+  data_processed: data/processed
+  data_external: data/external
+  results: results
+  checkpoints: results/checkpoints
+  figures: results/figures
+  metrics: results/metrics
+  rankings: results/rankings
+
+# ------------------------------------------------------------
+# Coleta de dados (ver scripts/ e docs/data_sources.md)
+# ------------------------------------------------------------
+data_sources:
+  ncbi_virus:
+    email: "SEU_EMAIL@exemplo.org"   # exigido pela API Entrez do NCBI
+    api_key: null                     # opcional; aumenta o limite de requisições
+    # Famílias priorizadas (RNA, relevância zoonótica documentada)
+    families:
+      - Coronaviridae
+      - Filoviridae
+      - Paramyxoviridae
+      - Orthomyxoviridae
+      - Arenaviridae
+    min_length: 1000          # comprimento mínimo (bp) das sequências
+    max_records_per_family: 5000
+  virushostdb:
+    url: "https://www.genome.jp/ftp/db/virushostdb/virushostdb.tsv"
+  virhostnet:
+    url: "http://virhostnet.prabi.fr/"   # interações vírus-hospedeiro (download manual/registrado)
+  taxonomy:
+    ncbi_taxdump: "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz"
+
+# ------------------------------------------------------------
+# Curadoria
+# ------------------------------------------------------------
+curation:
+  dedup_identity: 0.99      # CD-HIT: agrupar sequências >= 99% idênticas
+  remove_ambiguous_frac: 0.01   # descartar se > 1% de bases ambíguas (N)
+  allowed_alphabet: "ACGTU"
+
+# ------------------------------------------------------------
+# Representações
+# ------------------------------------------------------------
+features:
+  kmer:
+    k: 6                    # tamanho do k-mer para o baseline interpretável
+    normalize: true
+  embeddings:
+    backend: kmer_pca       # kmer_pca | transformer
+    dim: 256
+
+# ------------------------------------------------------------
+# Modelo JEPA genômico
+# ------------------------------------------------------------
+jepa:
+  context_block_frac: 0.5   # fração da sequência usada como contexto
+  num_target_blocks: 4
+  encoder:
+    type: transformer       # transformer | cnn
+    embed_dim: 256
+    depth: 6
+    num_heads: 8
+    dropout: 0.1
+  predictor:
+    hidden_dim: 512
+    depth: 2
+  ema_momentum: 0.996       # atualização do codificador-alvo (target encoder)
+
+train:
+  batch_size: 64
+  epochs: 50
+  lr: 0.0003
+  weight_decay: 0.05
+  warmup_epochs: 5
+  num_workers: 4
+
+# ------------------------------------------------------------
+# Fine-tuning supervisionado (predição de risco de spillover)
+# ------------------------------------------------------------
+finetune:
+  task: spillover_risk
+  cv_folds: 5
+  stratify_by: family
+  holdout_families: ["Arenaviridae"]   # validação entre famílias (vírus "emergentes")
+  metrics: [auroc, auprc, f1, precision, recall, specificity, brier]
+
+# ------------------------------------------------------------
+# Visualização do espaço latente
+# ------------------------------------------------------------
+viz:
+  reducer: umap             # umap | tsne
+  n_neighbors: 15
+  min_dist: 0.1
+  knn_for_ranking: 25       # vizinhos para o score de proximidade a zoonóticos
+
+# ------------------------------------------------------------
+# Publicação
+# ------------------------------------------------------------
+publish:
+  hf_repo_id: "SEU_USUARIO/jepa-spillover"
+  hf_repo_type: model       # model | dataset | space
+  github_repo: "SEU_USUARIO/jepa-spillover"

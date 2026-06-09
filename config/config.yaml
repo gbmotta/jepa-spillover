@@ -109,6 +109,6 @@ viz:
 # Publicação
 # ------------------------------------------------------------
 publish:
-  hf_repo_id: "SEU_USUARIO/jepa-spillover"
+  hf_repo_id: "gbmotta/jepa-spillover"
   hf_repo_type: model       # model | dataset | space
-  github_repo: "SEU_USUARIO/jepa-spillover"
+  github_repo: "gbmotta/jepa-spillover"

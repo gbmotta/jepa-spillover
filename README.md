@@ -179,7 +179,7 @@ validação experimental.
              vigilância genômica de vírus com potencial zoonótico},
   year    = {2026},
   note    = {Instituto Aggeu Magalhães — Fiocruz Pernambuco},
-  url     = {https://github.com/SEU_USUARIO/jepa-spillover}
+  url     = {https://github.com/gbmotta/jepa-spillover}
 }
 ```
 

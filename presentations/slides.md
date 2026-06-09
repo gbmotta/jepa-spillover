@@ -126,7 +126,7 @@ Famílias-foco: **Coronaviridae, Filoviridae, Paramyxoviridae, Orthomyxoviridae,
 
 # Obrigado!
 
-**Repositório:** github.com/SEU_USUARIO/jepa-spillover
-**Modelos/dados:** huggingface.co/SEU_USUARIO/jepa-spillover
+**Repositório:** github.com/gbmotta/jepa-spillover
+**Modelos/dados:** huggingface.co/gbmotta/jepa-spillover
 
 *Instituto Aggeu Magalhães · Fiocruz Pernambuco · PDJ/Fiocruz · 2026*

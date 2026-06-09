@@ -25,9 +25,9 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.urls]
-Homepage = "https://github.com/SEU_USUARIO/jepa-spillover"
-Repository = "https://github.com/SEU_USUARIO/jepa-spillover"
-"Hugging Face" = "https://huggingface.co/SEU_USUARIO/jepa-spillover"
+Homepage = "https://github.com/gbmotta/jepa-spillover"
+Repository = "https://github.com/gbmotta/jepa-spillover"
+"Hugging Face" = "https://huggingface.co/gbmotta/jepa-spillover"
 
 [project.scripts]
 jepa-spillover = "jepa_spillover.cli:app"

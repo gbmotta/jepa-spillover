@@ -12,12 +12,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-GH_USER="${GH_USER:-SEU_USUARIO}"
+GH_USER="${GH_USER:-gbmotta}"
 REPO="${REPO:-jepa-spillover}"
 BRANCH="${BRANCH:-main}"
 REMOTE_URL="${REMOTE_URL:-https://github.com/${GH_USER}/${REPO}.git}"
 
-if [[ "$GH_USER" == "SEU_USUARIO" ]]; then
+if [[ "$GH_USER" == "gbmotta" ]]; then
     echo "Defina GH_USER (e opcionalmente REPO). Ex.:"
     echo "  GH_USER=fulano REPO=jepa-spillover bash scripts/push_to_github.sh"
     exit 1

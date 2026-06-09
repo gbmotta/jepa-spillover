@@ -13,12 +13,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-HF_USER="${HF_USER:-SEU_USUARIO}"
+HF_USER="${HF_USER:-gbmotta}"
 REPO_NAME="${REPO_NAME:-jepa-spillover}"
 KIND="${1:-model}"   # model | dataset | space
 REPO_ID="${HF_USER}/${REPO_NAME}"
 
-if [[ "$HF_USER" == "SEU_USUARIO" ]]; then
+if [[ "$HF_USER" == "gbmotta" ]]; then
     echo "Defina HF_USER. Ex.: HF_USER=fulano bash scripts/push_to_huggingface.sh model"
     exit 1
 fi

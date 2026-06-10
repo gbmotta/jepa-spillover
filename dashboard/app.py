@@ -1,33 +1,29 @@
 """Dashboard interativo do JEPA-Spillover (Streamlit).
 
-Explora o espaço latente, o ranking de priorização e as métricas do modelo.
-
-Uso:
-    streamlit run dashboard/app.py
+Versão autocontida para Hugging Face Spaces — não depende do pacote jepa_spillover.
 """
 
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+# No HF Space, app.py fica em /app/app.py; dados em /app/data/
+# Localmente, app.py fica em dashboard/; dados na raiz do projeto
+_HERE = Path(__file__).resolve().parent
+_ROOT = _HERE if (_HERE / "data").exists() else _HERE.parent
 
-from jepa_spillover.config import Config  # noqa: E402
+PROC     = _ROOT / "data" / "processed"
+METRICS  = _ROOT / "results" / "metrics"
+RANKINGS = _ROOT / "results" / "rankings"
+FIGURES  = _ROOT / "results" / "figures"
+KMER_DIR = _ROOT / "results" / "kmer_sweep_full"
 
 st.set_page_config(page_title="JEPA-Spillover", page_icon="🧬", layout="wide")
-
-cfg = Config.load()
-PROC = cfg.resolve("data_processed")
-METRICS = cfg.resolve("metrics")
-RANKINGS = cfg.resolve("rankings")
-FIGURES = cfg.resolve("figures")
 
 
 @st.cache_data(show_spinner=False)
@@ -80,8 +76,8 @@ with st.expander("ℹ️ Status do pipeline", expanded=False):
 df = load_dataset()
 if df is None:
     st.warning(
-        "Nenhum dataset encontrado. Rode o pipeline primeiro:\n\n"
-        "```bash\nmake pipeline\n# ou\npython -m jepa_spillover.cli all\n```"
+        "Nenhum dataset encontrado. Os dados processados ainda não foram publicados neste Space.\n\n"
+        "**Repositório do código:** [gbmotta/jepa-spillover](https://huggingface.co/gbmotta/jepa-spillover)"
     )
     st.stop()
 
@@ -92,10 +88,12 @@ c2.metric("Famílias", df["family"].nunique())
 if "spillover_label" in df.columns:
     pos = int((df["spillover_label"] == 1).sum())
     neg = int((df["spillover_label"] == 0).sum())
-    c3.metric("Labels reais", f"{pos} ✚ / {neg} ✗", help="Positivos (humano) / Negativos (animal) — fonte: host NCBI + IntAct")
+    c3.metric("Labels reais", f"{pos} ✚ / {neg} ✗",
+              help="Positivos (humano) / Negativos (animal) — fonte: host NCBI + IntAct")
 metrics = load_metrics()
 if metrics and metrics.get("cv", {}).get("auroc") is not None:
-    c4.metric("AUROC (CV)", f"{metrics['cv']['auroc']:.3f}", help="k-mer PCA — melhorará com embeddings JEPA")
+    c4.metric("AUROC (CV)", f"{metrics['cv']['auroc']:.3f}",
+              help="k-mer PCA — melhorará com embeddings JEPA")
 
 tab_latent, tab_rank, tab_metrics, tab_kmer, tab_data = st.tabs(
     ["Espaço latente", "Ranking de priorização", "Métricas", "Benchmark k-mers", "Dados"]
@@ -175,8 +173,8 @@ with tab_metrics:
 # ----- Benchmark k-mers -----
 with tab_kmer:
     st.subheader("Benchmark k-mers — escolha do k ótimo")
-    kmer_results_path = ROOT / "results" / "kmer_sweep_full" / "kmer_sweep_results.json"
-    kmer_fig_path     = ROOT / "results" / "kmer_sweep_full" / "kmer_sweep.png"
+    kmer_results_path = KMER_DIR / "kmer_sweep_results.json"
+    kmer_fig_path     = KMER_DIR / "kmer_sweep.png"
 
     if kmer_results_path.exists():
         kmer_df = pd.DataFrame(json.loads(kmer_results_path.read_text()))

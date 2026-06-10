@@ -21,19 +21,52 @@ log = get_logger(__name__)
 
 
 def _load_embeddings(cfg: Config) -> tuple[np.ndarray, pd.DataFrame]:
-    """Carrega embeddings JEPA (preferencial) ou k-mer/PCA, alinhados ao dataset."""
+    """Carrega embeddings JEPA (preferencial) ou k-mer/PCA, alinhados ao dataset.
+
+    Filtra sequências sem embedding e sem spillover_label válido.
+    """
     proc = cfg.resolve("data_processed")
     df = pd.read_parquet(proc / "dataset.parquet")
-    for fname in ("jepa_embeddings.npz", "embeddings.npz"):
-        path = proc / fname
-        if path.exists():
-            data = np.load(path, allow_pickle=True)
-            order = {a: i for i, a in enumerate(data["accession"].astype(str))}
-            idx = df["accession"].astype(str).map(order)
-            emb = data["embeddings"][idx.to_numpy()]
-            log.info("Usando embeddings de %s — shape %s", fname, emb.shape)
-            return emb.astype(np.float32), df
-    raise FileNotFoundError("Nenhum arquivo de embeddings encontrado. Rode 'features' ou 'train' antes.")
+
+    # Candidatos em ordem de preferência; escolhe o com maior overlap com dataset
+    candidates = [proc / f for f in ("jepa_embeddings.npz", "embeddings.npz")]
+    candidates = [p for p in candidates if p.exists()]
+    if not candidates:
+        raise FileNotFoundError("Nenhum arquivo de embeddings encontrado. Rode 'features' ou 'train' antes.")
+
+    best_path, best_overlap = candidates[0], -1
+    for path in candidates:
+        data_tmp = np.load(path, allow_pickle=True)
+        acc_set = set(data_tmp["accession"].astype(str))
+        overlap = df["accession"].astype(str).isin(acc_set).sum()
+        log.info("Embeddings %s: %d accessions, overlap=%d", path.name, len(acc_set), overlap)
+        if overlap > best_overlap:
+            best_overlap, best_path = overlap, path
+
+    log.info("Usando %s (maior overlap: %d)", best_path.name, best_overlap)
+    data = np.load(best_path, allow_pickle=True)
+    order = {a: i for i, a in enumerate(data["accession"].astype(str))}
+    idx = df["accession"].astype(str).map(order)
+
+    # Manter apenas sequências com embedding encontrado
+    valid_emb = idx.notna()
+    if not valid_emb.all():
+        log.warning("embeddings: %d / %d accessions encontrados", valid_emb.sum(), len(df))
+        df = df[valid_emb].reset_index(drop=True)
+        idx = idx[valid_emb].reset_index(drop=True)
+
+    # Filtrar também por spillover_label não-nulo
+    if "spillover_label" in df.columns:
+        valid_label = df["spillover_label"].notna()
+        if not valid_label.all():
+            log.info("Fine-tune: usando %d / %d com spillover_label conhecido",
+                     valid_label.sum(), len(df))
+            df = df[valid_label].reset_index(drop=True)
+            idx = idx[valid_label].reset_index(drop=True)
+
+    emb = data["embeddings"][idx.astype(int).to_numpy()]
+    log.info("Embeddings carregados — shape %s, %d amostras com label", emb.shape, len(df))
+    return emb.astype(np.float32), df
 
 
 def finetune(config_path: str | None = None) -> Path:
@@ -42,9 +75,13 @@ def finetune(config_path: str | None = None) -> Path:
     set_global_seed(seed)
 
     X, df = _load_embeddings(cfg)
-    y = df["spillover_label"].to_numpy()
-    families = df["family"].to_numpy()
-    log.info("Fine-tune: %d amostras, %d features, seed=%d", len(y), X.shape[1], seed)
+    # Garantir inteiros — spillover_label pode ser Int64 nullable
+    y = df["spillover_label"].dropna().astype(int).to_numpy()
+    # Alinhar X e families ao y filtrado
+    valid = df["spillover_label"].notna().to_numpy()
+    X = X[valid]
+    families = df["family"].to_numpy()[valid]
+    log.info("Fine-tune: %d amostras com label, %d features, seed=%d", len(y), X.shape[1], seed)
 
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import StratifiedGroupKFold

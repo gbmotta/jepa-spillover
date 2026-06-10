@@ -44,13 +44,26 @@ def make_figures(config_path: str | None = None) -> Path:
     proc = cfg.resolve("data_processed")
 
     df = pd.read_parquet(proc / "dataset.parquet")
-    emb_path = proc / "jepa_embeddings.npz"
-    if not emb_path.exists():
-        emb_path = proc / "embeddings.npz"
-    log.info("Carregando embeddings: %s", emb_path.name)
-    data = np.load(emb_path, allow_pickle=True)
+
+    # Escolher embeddings com maior overlap com o dataset atual
+    candidates = [proc / f for f in ("jepa_embeddings.npz", "embeddings.npz")]
+    candidates = [p for p in candidates if p.exists()]
+    if not candidates:
+        raise FileNotFoundError("Nenhum arquivo de embeddings encontrado.")
+    best_path, best_overlap = candidates[0], -1
+    for path in candidates:
+        d_tmp = np.load(path, allow_pickle=True)
+        ov = df["accession"].astype(str).isin(set(d_tmp["accession"].astype(str))).sum()
+        if ov > best_overlap:
+            best_overlap, best_path = ov, path
+    log.info("Carregando embeddings: %s (overlap=%d)", best_path.name, best_overlap)
+
+    data = np.load(best_path, allow_pickle=True)
     order = {a: i for i, a in enumerate(data["accession"].astype(str))}
-    idx = df["accession"].astype(str).map(order).to_numpy()
+    idx_series = df["accession"].astype(str).map(order)
+    valid = idx_series.notna()
+    df = df[valid].reset_index(drop=True)
+    idx = idx_series[valid].astype(int).to_numpy()
     emb = data["embeddings"][idx]
     log.info("Embeddings: shape=%s", emb.shape)
 

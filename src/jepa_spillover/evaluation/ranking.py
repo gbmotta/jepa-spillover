@@ -46,16 +46,30 @@ def build_ranking(config_path: str | None = None) -> Path:
     log.info("Construindo ranking de priorização...")
 
     df = pd.read_parquet(proc / "dataset.parquet")
-    emb_path = proc / "jepa_embeddings.npz"
-    if not emb_path.exists():
-        emb_path = proc / "embeddings.npz"
-    log.info("Usando embeddings: %s", emb_path.name)
-    data = np.load(emb_path, allow_pickle=True)
-    order = {a: i for i, a in enumerate(data["accession"].astype(str))}
-    idx = df["accession"].astype(str).map(order).to_numpy()
-    emb = data["embeddings"][idx]
 
-    labels = df["spillover_label"].to_numpy()
+    candidates = [proc / f for f in ("jepa_embeddings.npz", "embeddings.npz")]
+    candidates = [p for p in candidates if p.exists()]
+    if not candidates:
+        raise FileNotFoundError("Nenhum arquivo de embeddings encontrado.")
+    best_path, best_overlap = candidates[0], -1
+    for path in candidates:
+        d_tmp = np.load(path, allow_pickle=True)
+        ov = df["accession"].astype(str).isin(set(d_tmp["accession"].astype(str))).sum()
+        if ov > best_overlap:
+            best_overlap, best_path = ov, path
+    log.info("Usando embeddings: %s (overlap=%d)", best_path.name, best_overlap)
+
+    data = np.load(best_path, allow_pickle=True)
+    order = {a: i for i, a in enumerate(data["accession"].astype(str))}
+    idx_series = df["accession"].astype(str).map(order)
+    valid = idx_series.notna()
+    if not valid.all():
+        log.warning("ranking: %d / %d accessions encontrados", valid.sum(), len(df))
+        df = df[valid].reset_index(drop=True)
+        idx_series = idx_series[valid].reset_index(drop=True)
+    emb = data["embeddings"][idx_series.astype(int).to_numpy()]
+
+    labels = df["spillover_label"].fillna(-1).astype(int).to_numpy()
     k = int(cfg.get_path("viz.knn_for_ranking", 25))
     df = df.copy()
     df["latent_zoonotic_score"] = latent_zoonotic_score(emb, labels, k=k)

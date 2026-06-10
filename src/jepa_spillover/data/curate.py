@@ -175,15 +175,67 @@ def _subsample(df: pd.DataFrame, max_per_family: int, seed: int) -> pd.DataFrame
     return pd.concat(parts, ignore_index=True).sample(frac=1, random_state=seed).reset_index(drop=True)
 
 
+# Base de conhecimento: espécies virais com infecção humana CONFIRMADA na literatura.
+# Fonte: WHO, CDC, ICTV, revisões sistemáticas. Atualizada manualmente.
+# Usada para corrigir labels de sequências coletadas de animais reservatório mas
+# pertencentes a espécies que sabidamente infectam humanos.
+KNOWN_HUMAN_PATHOGENS: dict[str, int] = {
+    # Coronaviridae
+    "SARS-CoV-2": 1, "SARS-CoV": 1, "MERS-CoV": 1,
+    "HCoV-229E": 1, "HCoV-NL63": 1, "HCoV-OC43": 1, "HCoV-HKU1": 1,
+    # Filoviridae
+    "Ebola": 1, "Marburg": 1, "Sudan": 1, "Bundibugyo": 1,
+    # Paramyxoviridae
+    "Nipah": 1, "Hendra": 1, "Measles": 1, "Mumps": 1,
+    "Human parainfluenza": 1, "Respiratory syncytial": 1,
+    # Orthomyxoviridae
+    "H5N1": 1, "H1N1": 1, "H3N2": 1, "H7N9": 1, "H9N2": 1,
+    "Influenza A": 1, "Influenza B": 1,
+    # Arenaviridae
+    "Lassa": 1, "Junin": 1, "Machupo": 1, "Guanarito": 1, "Sabia": 1,
+    "Lujo": 1, "Lymphocytic choriomeningitis": 1,
+    # Flaviviridae
+    "Dengue": 1, "Zika": 1, "West Nile": 1, "Yellow fever": 1,
+    "Japanese encephalitis": 1, "Tick-borne encephalitis": 1,
+    "Hepatitis C": 1,
+    # Nairoviridae
+    "Crimean-Congo": 1,
+    # Phenuiviridae
+    "Rift Valley": 1, "Severe fever with thrombocytopenia": 1,
+    # Togaviridae
+    "Chikungunya": 1, "Eastern equine encephalitis": 1,
+    "Western equine encephalitis": 1, "Venezuelan equine": 1,
+    # Rhabdoviridae
+    "Rabies": 1, "Rabies lyssavirus": 1,
+    # Orthohantavirus (Hantaviridae)
+    "Hantaan": 1, "Sin Nombre": 1, "Andes": 1, "Seoul": 1,
+    # Peribunyaviridae
+    "La Crosse": 1, "California encephalitis": 1,
+    # Poxviridae
+    "Monkeypox": 1, "Mpox": 1, "Variola": 1, "Cowpox": 1,
+    # Retroviridae
+    "HIV": 1, "HTLV": 1,
+}
+
+# Animais reservatório conhecidos SEM infecção humana confirmada
+# (para não sobre-corrigir em casos ambíguos)
+KNOWN_NONHUMAN_ONLY: set[str] = {
+    "canine distemper", "feline", "bovine", "equine influenza",
+    "porcine reproductive", "fowl", "newcastle disease",
+}
+
+
 def label_spillover(df: pd.DataFrame, cfg: Config) -> pd.DataFrame:
-    """Gera `spillover_label` e `n_hosts` a partir de 3 fontes de evidência.
+    """Gera `spillover_label` usando 4 fontes de evidência em cascata.
 
     Prioridade (maior → menor confiança):
+      0. Base de conhecimento de espécies (KNOWN_HUMAN_PATHOGENS) — corrige labels
+         de sequências coletadas de animais mas pertencentes a espécies humanas
       1. Campo `host` direto: "Homo sapiens" / "human" → label=1
       2. IntAct (EMBL-EBI): taxon_id com interação proteica confirmada com humano
-      3. VirusHostDB: virus com humano listado como hospedeiro
+      3. VirusHostDB: vírus com humano listado como hospedeiro
 
-    A coluna `spillover_confidence` indica quantas fontes confirmaram (0-3).
+    A coluna `spillover_confidence` indica quantas fontes confirmaram (0-4).
     """
     n = len(df)
     labels = pd.Series(0, index=df.index, dtype=int)
@@ -197,6 +249,32 @@ def label_spillover(df: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         df["host"] = df["description"].apply(_extract_host)
         n_extracted = df["host"].notna().sum()
         log.info("Host extraído de %d / %d sequências", n_extracted, len(df))
+
+    # ── Fonte 0b: base de conhecimento de espécies ───────────────────────
+    # Aplica label=1 a qualquer sequência cuja description contenha o nome de
+    # uma espécie com infecção humana confirmada, independente do host coletado.
+    if "description" in df.columns:
+        species_mask = pd.Series(False, index=df.index)
+        for species in KNOWN_HUMAN_PATHOGENS:
+            match = df["description"].fillna("").str.contains(
+                re.escape(species), case=False, regex=True
+            )
+            species_mask |= match
+        # Excluir vírus explicitamente conhecidos como não-humanos
+        for nonhuman in KNOWN_NONHUMAN_ONLY:
+            nonhuman_match = df["description"].fillna("").str.contains(
+                re.escape(nonhuman), case=False, regex=True
+            )
+            species_mask &= ~nonhuman_match
+        labels[species_mask] = 1
+        confidence[species_mask] += 1
+        n_corrected = species_mask.sum()
+        log.info(
+            "Fonte 0b (espécies conhecidas): %d sequências marcadas como spillover "
+            "(inclui correção de %d com host=animal mas espécie humana)",
+            n_corrected,
+            (species_mask & (df.get("host", pd.Series("", index=df.index)).fillna("") != "human")).sum(),
+        )
 
     # ── Fonte 1: campo host direto ─────────────────────────────────────────
     if "host" in df.columns:
@@ -213,18 +291,21 @@ def label_spillover(df: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         ) & ~human_host
         log.info("Fonte 1 (host direto): %d sequências com host não-humano confirmado", nonhuman.sum())
 
-    # Se temos host-level info suficiente, usar só ela (mais precisa que família)
+    # Sequências sem host E sem espécie conhecida → NaN (só pré-treino JEPA)
+    # Sequências com espécie conhecida (Fonte 0b) já têm label definido
     n_with_host = (df["host"].fillna("") != "").sum() if "host" in df.columns else 0
-    use_family_level = n_with_host < 0.1 * n  # só usa família se < 10% tem host info
-    log.info("Sequências com host identificado: %d / %d (%.1f%%) — family-level: %s",
-             n_with_host, n, 100 * n_with_host / max(n, 1), use_family_level)
+    n_with_species = (labels == 1).sum()  # já marcados pela Fonte 0b
+    use_family_level = (n_with_host + n_with_species) < 0.1 * n
+    log.info(
+        "Labels por host: %d | por espécie: %d | total rotulados: %d / %d — family-level: %s",
+        n_with_host, n_with_species, max(n_with_host, n_with_species), n, use_family_level,
+    )
 
     if not use_family_level:
-        # Temos host-level info suficiente → usar apenas host direto
-        # Sequências sem host → NaN (excluídas do fine-tuning, usadas só no pré-treino)
-        no_host = df["host"].fillna("") == ""
-        labels[no_host] = -1  # sentinela para NaN
-        log.info("Sequências sem host (label=NaN): %d", no_host.sum())
+        # Sequências sem host E não identificadas pela base de espécies → NaN
+        no_info = (df["host"].fillna("") == "") & (labels == 0)
+        labels[no_info] = -1  # sentinela para NaN
+        log.info("Sequências sem informação (label=NaN): %d", no_info.sum())
         df_out = df.copy()
         df_out["spillover_label"] = labels.where(labels >= 0).astype("Int64")
         df_out["spillover_confidence"] = confidence

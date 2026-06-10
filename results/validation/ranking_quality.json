@@ -1,0 +1,9 @@
+{
+  "n_referencia": 24,
+  "encontrados_dataset": 20,
+  "status_ok": 2,
+  "status_aviso": 4,
+  "status_erro": 14,
+  "recall_at_20pct": 0.3,
+  "mediana_rank_pct": 22.7
+}

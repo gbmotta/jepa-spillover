@@ -1,0 +1,25 @@
+virus,family,risco_real,n_seqs,melhor_rank,pct_top,label_correto,label_obtido,status
+SARS-CoV-2,Coronaviridae,muito alto,1525,1.0,0.0,1.0,1.0,✅ OK
+SARS-CoV,Coronaviridae,muito alto,1525,1.0,0.0,1.0,1.0,✅ OK
+MERS-CoV,Coronaviridae,alto,1,4489.0,22.4,1.0,0.0,❌ Label errado
+HCoV-229E,Coronaviridae,baixo,0,,,,,❌ NÃO ENCONTRADO
+Ebola,Filoviridae,muito alto,1816,1175.0,5.9,1.0,1.0,⚠️  Rank baixo
+Marburg,Filoviridae,muito alto,71,3777.0,18.9,1.0,1.0,⚠️  Rank baixo
+Nipah,Paramyxoviridae,muito alto,3,4502.0,22.5,1.0,1.0,❌ Rank muito baixo
+Hendra,Paramyxoviridae,alto,15,4506.0,22.5,1.0,0.0,❌ Label errado
+Measles,Paramyxoviridae,alto,591,20000.0,100.0,1.0,,❌ Label errado
+H5N1,Orthomyxoviridae,alto,724,4648.0,23.2,1.0,0.0,❌ Label errado
+H1N1,Orthomyxoviridae,alto,102,4595.0,23.0,1.0,0.0,❌ Label errado
+H7N9,Orthomyxoviridae,alto,9,4816.0,24.1,1.0,0.0,❌ Label errado
+Lassa,Arenaviridae,alto,898,2456.0,12.3,1.0,1.0,⚠️  Rank baixo
+Junin,Arenaviridae,alto,57,6001.0,30.0,1.0,,❌ Label errado
+Machupo,Arenaviridae,alto,44,5692.0,28.5,1.0,,❌ Label errado
+Dengue,Flaviviridae,alto,401,4846.0,24.2,1.0,1.0,❌ Rank muito baixo
+Zika,Flaviviridae,alto,0,,,,,❌ NÃO ENCONTRADO
+West Nile,Flaviviridae,moderado,17,20000.0,100.0,1.0,,❌ Label errado
+Yellow fever,Flaviviridae,alto,0,,,,,❌ NÃO ENCONTRADO
+Crimean-Congo,Nairoviridae,muito alto,57,4570.0,22.9,1.0,0.0,❌ Label errado
+Rift Valley,Phenuiviridae,alto,30,3840.0,19.2,1.0,1.0,⚠️  Rank baixo
+Chikungunya,Togaviridae,alto,1949,4707.0,23.5,1.0,1.0,❌ Rank muito baixo
+Eastern equine,Togaviridae,alto,0,,,,,❌ NÃO ENCONTRADO
+Rabies,Rhabdoviridae,muito alto,1248,4386.0,21.9,1.0,1.0,❌ Rank muito baixo

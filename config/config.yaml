@@ -106,8 +106,11 @@ finetune:
 # ------------------------------------------------------------
 viz:
   reducer: umap             # umap | tsne
-  n_neighbors: 15
-  min_dist: 0.1
+  n_neighbors: 30           # mais vizinhos = clusters mais coesos (era 15)
+  min_dist: 0.05            # distância mínima menor = clusters mais compactos (era 0.1)
+  max_points: 3000          # subamostrar para visualização (estratificado por família)
+  tsne_perplexity: 40       # perplexidade do t-SNE
+  compare_reducers: true    # gerar UMAP e t-SNE e escolher melhor pelo silhouette
   knn_for_ranking: 25       # vizinhos para o score de proximidade a zoonóticos
 
 # ------------------------------------------------------------

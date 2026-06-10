@@ -1,0 +1,47 @@
+[
+  {
+    "k": 3,
+    "vocab_size": 64,
+    "n_components": 64,
+    "var_explained": 1.0,
+    "auroc": 0.9948,
+    "time_s": 288.11,
+    "peak_ram_mb": 1.8
+  },
+  {
+    "k": 4,
+    "vocab_size": 256,
+    "n_components": 128,
+    "var_explained": 0.9823,
+    "auroc": 0.9961,
+    "time_s": 347.01,
+    "peak_ram_mb": 7.6
+  },
+  {
+    "k": 5,
+    "vocab_size": 1024,
+    "n_components": 128,
+    "var_explained": 0.8717,
+    "auroc": 0.9961,
+    "time_s": 285.3,
+    "peak_ram_mb": 35.6
+  },
+  {
+    "k": 6,
+    "vocab_size": 4096,
+    "n_components": 128,
+    "var_explained": 0.7537,
+    "auroc": 0.9947,
+    "time_s": 304.45,
+    "peak_ram_mb": 115.1
+  },
+  {
+    "k": 7,
+    "vocab_size": 16384,
+    "n_components": 128,
+    "var_explained": 0.6826,
+    "auroc": 0.9934,
+    "time_s": 393.81,
+    "peak_ram_mb": 450.6
+  }
+]

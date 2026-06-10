@@ -176,11 +176,13 @@ Testamos k ∈ {3, 4, 5, 6} com 3000 sequências, 128 componentes PCA:
 | k | Features | Var. explicada | AUROC (5-fold) | RAM |
 |---|---|---|---|---|
 | 3 | 64 | 100% | 0.9948 | 2 MB |
-| **4** | **256** | **98.2%** | **0.9961** | **8 MB** |
+| **4** | **256** | **98.2%** | **0.9961 ✓** | **8 MB** |
 | 5 | 1.024 | 87.2% | 0.9961 | 36 MB |
 | 6 | 4.096 | 75.4% | 0.9947 | 115 MB |
+| 7 | 16.384 | 68.3% | 0.9934 ↓ | 451 MB |
 
-**k=4 selecionado** — melhor trade-off entre qualidade, velocidade e uso de memória.
+**k=4 selecionado** — melhor AUROC (empatado com k=5), 56× menos RAM que k=7.
+Notavelmente, k=7 tem o **pior AUROC** — vocabulários grandes introduzem ruído em datasets deste tamanho.
 
 ## Reprodutibilidade e ciência aberta
 

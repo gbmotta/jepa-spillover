@@ -102,18 +102,41 @@ def train(config_path: str | None = None) -> Path:
         dropout=float(cfg.get_path("jepa.encoder.dropout", 0.1)),
     ).to(device)
 
-    epochs = int(cfg.get_path("train.epochs", 50))
+    epochs     = int(cfg.get_path("train.epochs", 50))
+    save_every = int(cfg.get_path("train.save_every_epochs", 5))
     opt = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad],
         lr=float(cfg.get_path("train.lr", 3e-4)),
         weight_decay=float(cfg.get_path("train.weight_decay", 0.05)),
     )
 
+    ckpt_dir = cfg.resolve("checkpoints")
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    ckpt     = ckpt_dir / "jepa_genomic.pt"
+    ckpt_tmp = ckpt_dir / "jepa_genomic_latest.pt"
+
+    # ── Retomar de checkpoint anterior se existir ──────────────────────────
+    start_epoch = 0
+    if ckpt_tmp.exists():
+        saved = torch.load(ckpt_tmp, map_location=device)
+        if saved.get("epoch", 0) > 0:
+            model.load_state_dict(saved["state_dict"])
+            opt.load_state_dict(saved["optimizer"])
+            start_epoch = saved["epoch"]
+            log.info("Retomando de checkpoint: época %d/%d (loss=%.5f)",
+                     start_epoch, epochs, saved.get("last_loss", float("nan")))
+        else:
+            log.info("Checkpoint encontrado mas sem época salva — iniciando do zero.")
+    elif ckpt.exists():
+        saved = torch.load(ckpt, map_location=device)
+        model.load_state_dict(saved["state_dict"])
+        log.info("Pesos carregados de checkpoint final anterior — treinando do zero.")
+
     run = _maybe_trackio(cfg, epochs)
-    log.info("Iniciando treino | device=%s | seqs=%d | epochs=%d | batch=%d",
-             device, len(sequences), epochs, dl.batch_size)
+    log.info("Iniciando treino | device=%s | seqs=%d | epochs=%d | batch=%d | start=%d",
+             device, len(sequences), epochs, dl.batch_size, start_epoch)
     model.train()
-    epoch_bar = tqdm(range(epochs), desc="Epochs", unit="ep", ncols=90)
+    epoch_bar = tqdm(range(start_epoch, epochs), desc="Epochs", unit="ep", ncols=90)
     for ep in epoch_bar:
         total = 0.0
         batch_bar = tqdm(dl, desc=f"Ep {ep+1}", unit="batch",
@@ -133,12 +156,21 @@ def train(config_path: str | None = None) -> Path:
         if run is not None:
             run.log({"epoch": ep + 1, "jepa_loss": avg})
 
-    ckpt_dir = cfg.resolve("checkpoints")
-    ckpt_dir.mkdir(parents=True, exist_ok=True)
-    ckpt = ckpt_dir / "jepa_genomic.pt"
+        # Salvar checkpoint intermediário a cada N épocas
+        if (ep + 1) % save_every == 0 or (ep + 1) == epochs:
+            torch.save({
+                "state_dict": model.state_dict(),
+                "optimizer":  opt.state_dict(),
+                "epoch":      ep + 1,
+                "last_loss":  avg,
+                "k": k, "max_len": max_len,
+                "vocab_size": tokenizer.vocab_size,
+            }, ckpt_tmp)
+            log.info("Checkpoint intermediário salvo: época %d/%d (loss=%.5f)", ep + 1, epochs, avg)
+
     torch.save({"state_dict": model.state_dict(), "k": k, "max_len": max_len,
                 "vocab_size": tokenizer.vocab_size}, ckpt)
-    log.info("Checkpoint salvo: %s", ckpt)
+    log.info("Checkpoint final salvo: %s", ckpt)
 
     _export_embeddings(cfg, model, tokenizer, df, max_len, device)
     return ckpt

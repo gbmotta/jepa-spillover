@@ -67,10 +67,15 @@ with st.expander("ℹ️ Status do pipeline", expanded=False):
 | Coleta de dados | ✅ Concluído | ~51k sequências (NCBI + GISAID) |
 | Curadoria | ✅ Concluído | 20k sequências, 10 famílias balanceadas |
 | k-mers + PCA | ✅ Concluído | k=4 · AUROC 0.9961 · 8 MB RAM |
+| Labels reais (IntAct) | ✅ Concluído | 4.047 humano · 953 animal · 15k NaN |
 | Pré-treino JEPA | 🔄 Em execução | RTX 3050 6GB · ~2.5 batch/s |
-| Fine-tuning | ⏳ Aguardando | — |
-| Avaliação + ranking | ⏳ Aguardando | — |
+| Fine-tuning (k-mer PCA) | ✅ Concluído | AUROC 0.449 — aguardando embeddings JEPA |
+| Avaliação + ranking | ✅ Concluído | UMAP 20k seqs · ranking gerado |
     """)
+    st.caption(
+        "⚠️ AUROC atual (0.449) reflete features k-mer PCA — após o pré-treino JEPA "
+        "completar, embeddings supervisionados devem elevar AUROC > 0.75."
+    )
 
 df = load_dataset()
 if df is None:
@@ -84,11 +89,13 @@ if df is None:
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Vírus", f"{len(df):,}")
 c2.metric("Famílias", df["family"].nunique())
-if "spillover_label" in df:
-    c3.metric("Zoonóticos (rótulo)", int(df["spillover_label"].sum()))
+if "spillover_label" in df.columns:
+    pos = int((df["spillover_label"] == 1).sum())
+    neg = int((df["spillover_label"] == 0).sum())
+    c3.metric("Labels reais", f"{pos} ✚ / {neg} ✗", help="Positivos (humano) / Negativos (animal) — fonte: host NCBI + IntAct")
 metrics = load_metrics()
-if metrics and metrics.get("cv", {}).get("auroc") == metrics.get("cv", {}).get("auroc"):
-    c4.metric("AUROC (CV)", f"{metrics['cv']['auroc']:.3f}")
+if metrics and metrics.get("cv", {}).get("auroc") is not None:
+    c4.metric("AUROC (CV)", f"{metrics['cv']['auroc']:.3f}", help="k-mer PCA — melhorará com embeddings JEPA")
 
 tab_latent, tab_rank, tab_metrics, tab_kmer, tab_data = st.tabs(
     ["Espaço latente", "Ranking de priorização", "Métricas", "Benchmark k-mers", "Dados"]
@@ -141,11 +148,29 @@ with tab_metrics:
     if metrics is None:
         st.info("Execute `make finetune` para gerar as métricas.")
     else:
-        st.subheader("Validação cruzada (estratificada por família)")
-        st.json(metrics.get("cv", {}))
+        auroc = metrics.get("cv", {}).get("auroc", 0)
+        if auroc < 0.6:
+            st.warning(
+                f"**AUROC atual: {auroc:.3f}** — features k-mer PCA (não-supervisionadas). "
+                "Isso é esperado: k-mers distinguem *famílias* virais, não se o vírus "
+                "foi isolado de humano ou animal dentro da mesma família. "
+                "Após o pré-treino JEPA completar (~esta noite), os embeddings supervisionados "
+                "devem elevar o AUROC significativamente."
+            )
+        st.subheader("Validação cruzada — 5 folds (estratificado por família)")
+        cv = metrics.get("cv", {})
+        col1, col2, col3 = st.columns(3)
+        col1.metric("AUROC", f"{cv.get('auroc', 0):.3f}")
+        col2.metric("AUPRC", f"{cv.get('auprc', 0):.3f}")
+        col3.metric("F1", f"{cv.get('f1', 0):.3f}")
+        st.json(cv)
         if metrics.get("cross_family"):
-            st.subheader("Validação entre famílias (holdout)")
-            st.json(metrics["cross_family"])
+            st.subheader("Validação entre famílias (holdout: Arenaviridae)")
+            cf = metrics["cross_family"]
+            col1, col2 = st.columns(2)
+            col1.metric("AUROC cross-família", f"{cf.get('auroc', 0):.3f}")
+            col2.metric("N holdout", cf.get("n_holdout", "—"))
+            st.json(cf)
 
 # ----- Benchmark k-mers -----
 with tab_kmer:

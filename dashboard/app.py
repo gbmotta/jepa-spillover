@@ -60,6 +60,18 @@ st.caption(
     "com potencial zoonótico — Instituto Aggeu Magalhães / Fiocruz"
 )
 
+with st.expander("ℹ️ Status do pipeline", expanded=False):
+    st.markdown("""
+| Etapa | Status | Detalhe |
+|---|---|---|
+| Coleta de dados | ✅ Concluído | ~51k sequências (NCBI + GISAID) |
+| Curadoria | ✅ Concluído | 20k sequências, 10 famílias balanceadas |
+| k-mers + PCA | ✅ Concluído | k=4 · AUROC 0.9961 · 8 MB RAM |
+| Pré-treino JEPA | 🔄 Em execução | RTX 3050 6GB · ~2.5 batch/s |
+| Fine-tuning | ⏳ Aguardando | — |
+| Avaliação + ranking | ⏳ Aguardando | — |
+    """)
+
 df = load_dataset()
 if df is None:
     st.warning(
@@ -78,8 +90,8 @@ metrics = load_metrics()
 if metrics and metrics.get("cv", {}).get("auroc") == metrics.get("cv", {}).get("auroc"):
     c4.metric("AUROC (CV)", f"{metrics['cv']['auroc']:.3f}")
 
-tab_latent, tab_rank, tab_metrics, tab_data = st.tabs(
-    ["Espaço latente", "Ranking de priorização", "Métricas", "Dados"]
+tab_latent, tab_rank, tab_metrics, tab_kmer, tab_data = st.tabs(
+    ["Espaço latente", "Ranking de priorização", "Métricas", "Benchmark k-mers", "Dados"]
 )
 
 # ----- Espaço latente -----
@@ -134,6 +146,30 @@ with tab_metrics:
         if metrics.get("cross_family"):
             st.subheader("Validação entre famílias (holdout)")
             st.json(metrics["cross_family"])
+
+# ----- Benchmark k-mers -----
+with tab_kmer:
+    st.subheader("Benchmark k-mers — escolha do k ótimo")
+    kmer_results_path = ROOT / "results" / "kmer_sweep_full" / "kmer_sweep_results.json"
+    kmer_fig_path     = ROOT / "results" / "kmer_sweep_full" / "kmer_sweep.png"
+
+    if kmer_results_path.exists():
+        kmer_df = pd.DataFrame(json.loads(kmer_results_path.read_text()))
+        kmer_df["vocab_size"] = kmer_df["vocab_size"].apply(lambda x: f"{x:,}")
+        kmer_df["var_%"] = (kmer_df["var_explained"] * 100).round(1).astype(str) + "%"
+        kmer_df["auroc"] = kmer_df["auroc"].round(4)
+        kmer_df["peak_ram_mb"] = kmer_df["peak_ram_mb"].round(0).astype(str) + " MB"
+        kmer_df["time_s"] = kmer_df["time_s"].round(1).astype(str) + "s"
+        st.dataframe(
+            kmer_df[["k", "vocab_size", "var_%", "auroc", "time_s", "peak_ram_mb"]],
+            use_container_width=True, hide_index=True,
+        )
+        st.caption("k=4 selecionado como padrão — melhor trade-off AUROC × RAM × tempo.")
+    else:
+        st.info("Execute `python scripts/kmer_sweep.py` para gerar o benchmark.")
+
+    if kmer_fig_path.exists():
+        st.image(str(kmer_fig_path), caption="Benchmark k-mers (AUROC, variância, tempo, RAM)")
 
 # ----- Dados -----
 with tab_data:

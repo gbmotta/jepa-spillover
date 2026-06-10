@@ -14,22 +14,59 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from ..config import Config
-from ..data.kmers import kmer_matrix
+from ..data.kmers import kmer_matrix, kmer_matrix_chunks
+from ..logger import get_logger
+
+log = get_logger(__name__)
 
 
-def kmer_pca_embeddings(sequences, *, k: int, dim: int, seed: int) -> np.ndarray:
-    """Embeddings por PCA sobre frequências de k-mers."""
-    from sklearn.decomposition import PCA
+def kmer_pca_embeddings(
+    sequences,
+    *,
+    k: int,
+    dim: int,
+    seed: int,
+    chunk_size: int = 500,
+) -> np.ndarray:
+    """Embeddings por IncrementalPCA sobre frequências de k-mers.
 
-    mat, _ = kmer_matrix(sequences, k=k, normalize=True)
-    n_comp = min(dim, mat.shape[0], mat.shape[1])
-    pca = PCA(n_components=n_comp, random_state=seed)
-    emb = pca.fit_transform(mat)
-    if emb.shape[1] < dim:  # pad para a dimensão alvo
+    Usa IncrementalPCA para nunca manter a matriz completa em RAM:
+    processa `chunk_size` sequências por vez na fase de fit e transform.
+    """
+    from sklearn.decomposition import IncrementalPCA
+
+    seqs = list(sequences)
+    n = len(seqs)
+    vocab_size = 4 ** k
+    n_comp = min(dim, n - 1, vocab_size)
+    # IncrementalPCA exige chunk >= n_components
+    safe_chunk = max(chunk_size, n_comp + 1)
+    log.info("k-mer IncrementalPCA: k=%d, dim=%d, n=%d, chunk=%d", k, n_comp, n, safe_chunk)
+
+    ipca = IncrementalPCA(n_components=n_comp)
+
+    # Fase 1: fit parcial chunk a chunk
+    log.info("Fase 1/2: fit IncrementalPCA...")
+    for chunk in kmer_matrix_chunks(seqs, k=k, chunk_size=safe_chunk, show_progress=True):
+        ipca.partial_fit(chunk)
+    var = ipca.explained_variance_ratio_.sum()
+    log.info("PCA variância explicada: %.1f%%", var * 100)
+
+    # Fase 2: transform chunk a chunk (nunca aloca a matriz completa)
+    log.info("Fase 2/2: transform...")
+    parts: list[np.ndarray] = []
+    for chunk in kmer_matrix_chunks(seqs, k=k, chunk_size=safe_chunk, show_progress=False):
+        parts.append(ipca.transform(chunk).astype(np.float32))
+    emb = np.vstack(parts)
+    del parts
+
+    if emb.shape[1] < dim:
         emb = np.pad(emb, ((0, 0), (0, dim - emb.shape[1])))
-    return emb.astype(np.float32)
+    log.info("Embeddings k-mer PCA: shape=%s (%.0f MB)", emb.shape, emb.nbytes / 1e6)
+    return emb
 
 
 def transformer_embeddings(sequences, *, model_name: str, device: str) -> np.ndarray:
@@ -40,14 +77,16 @@ def transformer_embeddings(sequences, *, model_name: str, device: str) -> np.nda
     import torch
     from transformers import AutoModel, AutoTokenizer
 
+    log.info("Carregando modelo Transformer: %s (device=%s)", model_name, device)
     tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     model = AutoModel.from_pretrained(model_name, trust_remote_code=True).to(device).eval()
     out = []
     with torch.no_grad():
-        for seq in sequences:
+        for seq in tqdm(sequences, desc="Transformer emb", unit="seq", ncols=90):
             enc = tok(seq[:4000], return_tensors="pt", truncation=True, max_length=512).to(device)
             hidden = model(**enc).last_hidden_state
             out.append(hidden.mean(dim=1).squeeze(0).cpu().numpy())
+    log.info("Transformer embeddings: %d sequências processadas", len(out))
     return np.vstack(out).astype(np.float32)
 
 
@@ -61,19 +100,23 @@ def build_embeddings(config_path: str | None = None) -> Path:
 
     df = pd.read_parquet(cfg.resolve("data_processed") / "dataset.parquet")
     sequences = df["sequence"].tolist()
+    log.info("Build embeddings: backend=%s, n=%d seqs", backend, len(sequences))
+
+    chunk_size = int(cfg.get_path("features.kmer.chunk_size", 500))
+    pca_chunk  = int(cfg.get_path("features.embeddings.pca_chunk", 500))
 
     if backend == "transformer":
         from ..config import get_device
-
         device = get_device(cfg.get_path("project.device", "auto"))
-        model_name = cfg.get_path("features.embeddings.model_name", "InstaDeepAI/nucleotide-transformer-500m-human-ref")
-        print(f"[embeddings] backend=transformer ({model_name}, device={device})")
+        model_name = cfg.get_path(
+            "features.embeddings.model_name",
+            "InstaDeepAI/nucleotide-transformer-500m-human-ref",
+        )
         emb = transformer_embeddings(sequences, model_name=model_name, device=device)
     else:
-        print(f"[embeddings] backend=kmer_pca (k={k}, dim={dim})")
-        emb = kmer_pca_embeddings(sequences, k=k, dim=dim, seed=seed)
+        emb = kmer_pca_embeddings(sequences, k=k, dim=dim, seed=seed, chunk_size=pca_chunk)
 
     out = cfg.resolve("data_processed") / "embeddings.npz"
     np.savez_compressed(out, embeddings=emb, accession=df["accession"].to_numpy())
-    print(f"[embeddings] Salvo {out} — shape {emb.shape}")
+    log.info("Embeddings salvos: %s — shape %s", out, emb.shape)
     return out

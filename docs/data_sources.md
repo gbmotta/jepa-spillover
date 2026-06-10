@@ -18,9 +18,15 @@ publicações. Este repositório **não redistribui** dados de acesso restrito (
 - **Conteúdo:** genomas e anotações de patógenos virais.
 - **Acesso:** downloads e API REST do BV-BRC.
 
-### GISAID *(restrito)*
-- **Conteúdo:** sequências de influenza, SARS-CoV-2 etc.
-- **Acesso:** **credenciamento obrigatório**; redistribuição proibida. Use localmente conforme o EpiFlu/EpiCoV DAA.
+### GISAID *(restrito — credencial institucional)*
+- **Conteúdo:** sequências de vírus com relevância zoonótica.
+- **Acesso:** **credenciamento obrigatório**; redistribuição proibida. Use localmente conforme o DAA de cada banco.
+- **Bancos utilizados:**
+  - **EpiCoV** — SARS-CoV-2 e betacoronavírus (bat, MERS) → `downloads/GISAID/epicov_*/`
+  - **EpiArbo** — Dengue, Zika, Chikungunya, Oropouche, West Nile → `downloads/GISAID/epiarbo_*/`
+  - **EpiNiV** — Nipah → `downloads/GISAID/epiniv_*/`
+- **Script de ingestão:** `scripts/download_gisaid.py` (lê os TSV exportados manualmente)
+- **Status:** ✅ ~12k sequências baixadas (Jun 2026).
 
 ---
 
@@ -31,12 +37,20 @@ publicações. Este repositório **não redistribui** dados de acesso restrito (
 - **Acesso:** TSV direto — `https://www.genome.jp/ftp/db/virushostdb/virushostdb.tsv`
 - **Script:** `scripts/download_virushostdb.py`
 
+### IntAct (EMBL-EBI) *(substitui VirHostNet para download em lote)*
+- **Conteúdo:** base canônica que integra **VirHostNet, MINT, DIP, HPIDb, BioGRID e UniProt** — interações moleculares proteína–proteína vírus–hospedeiro em PSI-MITAB 2.5.
+- **Acesso:** download direto — `https://ftp.ebi.ac.uk/pub/databases/intact/current/psimitab/intact.zip` (~1.35 GB comprimido, ~8 GB descomprimido).
+- **Script:** `scripts/download_intact_virushost.py` — baixa, extrai e filtra apenas interações vírus–hospedeiro.
+- **Status:** ✅ Download em andamento (Jun 2026).
+
 ### VirHostNet
-- **Conteúdo:** interações **moleculares** proteína–proteína vírus–hospedeiro.
-- **Acesso:** download (formato PSI-MITAB) via portal.
+- **Conteúdo:** interações **moleculares** proteína–proteína vírus–hospedeiro (subconjunto curado do IntAct).
+- **Acesso:** PSICQUIC REST na porta 9090 — `http://virhostnet.prabi.fr:9090/psicquic/webservices/current/search/query/*`
+- **Status:** ⚠️ Servidor instável (timeouts frequentes em Jun 2026). Usar IntAct como alternativa.
 
 ### P-HIPSTer
 - **Conteúdo:** interações vírus–humano preditas estruturalmente.
+- **Status:** ⚠️ Download em lote indisponível no site (Jun 2026).
 
 ---
 

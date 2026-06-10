@@ -11,9 +11,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+from tqdm import tqdm
 
 from ..config import Config, get_device, set_global_seed
+from ..logger import get_logger
 from ..models.jepa_genomic import GenomicJEPA, SequenceTokenizer
+
+log = get_logger(__name__)
 
 
 def _sample_blocks(tokens, *, context_frac, n_targets, rng):
@@ -106,11 +110,15 @@ def train(config_path: str | None = None) -> Path:
     )
 
     run = _maybe_trackio(cfg, epochs)
-    print(f"[train] device={device} | seqs={len(sequences)} | epochs={epochs}")
+    log.info("Iniciando treino | device=%s | seqs=%d | epochs=%d | batch=%d",
+             device, len(sequences), epochs, dl.batch_size)
     model.train()
-    for ep in range(epochs):
+    epoch_bar = tqdm(range(epochs), desc="Epochs", unit="ep", ncols=90)
+    for ep in epoch_bar:
         total = 0.0
-        for ctx, tt, tm, tp in dl:
+        batch_bar = tqdm(dl, desc=f"Ep {ep+1}", unit="batch",
+                         ncols=90, leave=False)
+        for ctx, tt, tm, tp in batch_bar:
             ctx, tt, tm, tp = ctx.to(device), tt.to(device), tm.to(device), tp.to(device)
             opt.zero_grad()
             loss = model(ctx, tt, tm, tp)
@@ -118,8 +126,10 @@ def train(config_path: str | None = None) -> Path:
             opt.step()
             model.update_target_encoder()
             total += loss.item()
+            batch_bar.set_postfix(loss=f"{loss.item():.5f}")
         avg = total / max(1, len(dl))
-        print(f"  epoch {ep + 1}/{epochs}  loss={avg:.5f}")
+        epoch_bar.set_postfix(avg_loss=f"{avg:.5f}")
+        log.info("Epoch %d/%d — loss=%.5f", ep + 1, epochs, avg)
         if run is not None:
             run.log({"epoch": ep + 1, "jepa_loss": avg})
 
@@ -128,7 +138,7 @@ def train(config_path: str | None = None) -> Path:
     ckpt = ckpt_dir / "jepa_genomic.pt"
     torch.save({"state_dict": model.state_dict(), "k": k, "max_len": max_len,
                 "vocab_size": tokenizer.vocab_size}, ckpt)
-    print(f"[train] Checkpoint salvo em {ckpt}")
+    log.info("Checkpoint salvo: %s", ckpt)
 
     _export_embeddings(cfg, model, tokenizer, df, max_len, device)
     return ckpt
@@ -137,23 +147,26 @@ def train(config_path: str | None = None) -> Path:
 @torch.no_grad()
 def _export_embeddings(cfg, model, tokenizer, df, max_len, device):
     model.eval()
+    log.info("Exportando embeddings JEPA para %d sequências...", len(df))
     embs = []
-    for seq in df["sequence"]:
+    for seq in tqdm(df["sequence"], desc="Embeddings", unit="seq", ncols=90):
         tokens = torch.as_tensor([tokenizer.encode(seq, max_len)], dtype=torch.long, device=device)
         embs.append(model.encode(tokens).squeeze(0).cpu().numpy())
     emb = np.vstack(embs).astype(np.float32)
     out = cfg.resolve("data_processed") / "jepa_embeddings.npz"
     np.savez_compressed(out, embeddings=emb, accession=df["accession"].to_numpy())
-    print(f"[train] Embeddings JEPA salvos em {out} — shape {emb.shape}")
+    log.info("Embeddings JEPA salvos: %s — shape %s", out, emb.shape)
 
 
 def _maybe_trackio(cfg, epochs):
     try:
         import trackio
-
-        return trackio.init(
+        run = trackio.init(
             project=cfg.get_path("project.name", "jepa-spillover"),
             config={"epochs": epochs, "lr": cfg.get_path("train.lr", 3e-4)},
         )
-    except Exception:
+        log.info("Trackio inicializado")
+        return run
+    except Exception as exc:
+        log.debug("Trackio não disponível: %s", exc)
         return None

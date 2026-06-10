@@ -6,7 +6,7 @@
 project:
   name: jepa-spillover
   seed: 42
-  device: auto            # auto | cpu | cuda
+  device: cuda            # auto | cpu | cuda
 
 paths:
   data_raw: data/raw
@@ -24,8 +24,8 @@ paths:
 # ------------------------------------------------------------
 data_sources:
   ncbi_virus:
-    email: "SEU_EMAIL@exemplo.org"   # exigido pela API Entrez do NCBI
-    api_key: null                     # opcional; aumenta o limite de requisições
+    email: "gmottaz@gmail.com"   # exigido pela API Entrez do NCBI
+    api_key: cd1a6ee372855eb9f6524eb1c26888adb408                     # opcional; aumenta o limite de requisições
     # Famílias priorizadas (RNA, relevância zoonótica documentada)
     families:
       - Coronaviridae
@@ -49,17 +49,22 @@ curation:
   dedup_identity: 0.99      # CD-HIT: agrupar sequências >= 99% idênticas
   remove_ambiguous_frac: 0.01   # descartar se > 1% de bases ambíguas (N)
   allowed_alphabet: "ACGTU"
+  # Limite de sequências por família — reduz uso de RAM em PCs pessoais.
+  # null = sem limite (usar em servidores). 2000 é seguro para ~8 GB RAM.
+  max_seqs_per_family: 2000
 
 # ------------------------------------------------------------
 # Representações
 # ------------------------------------------------------------
 features:
   kmer:
-    k: 6                    # tamanho do k-mer para o baseline interpretável
+    k: 4                    # tamanho do k-mer (4^k features: k=4→256, k=5→1024, k=6→4096) — benchmark mostrou k=4 melhor trade-off
     normalize: true
+    chunk_size: 500          # sequências por chunk no cálculo de k-mers (↓ = menos RAM)
   embeddings:
     backend: kmer_pca       # kmer_pca | transformer
-    dim: 256
+    dim: 128                # dimensão dos embeddings (↓ para economizar RAM)
+    pca_chunk: 500          # chunk do IncrementalPCA (↓ = menos RAM, mais lento)
 
 # ------------------------------------------------------------
 # Modelo JEPA genômico
@@ -79,12 +84,12 @@ jepa:
   ema_momentum: 0.996       # atualização do codificador-alvo (target encoder)
 
 train:
-  batch_size: 64
+  batch_size: 32             # RTX 3050 6GB: 32 é seguro para o Transformer JEPA
   epochs: 50
   lr: 0.0003
   weight_decay: 0.05
   warmup_epochs: 5
-  num_workers: 4
+  num_workers: 4             # GPU: multiprocessing para alimentar a GPU sem gargalo
 
 # ------------------------------------------------------------
 # Fine-tuning supervisionado (predição de risco de spillover)

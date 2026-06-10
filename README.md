@@ -8,8 +8,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.2+-ee4c2c.svg)](https://pytorch.org/)
-[![Status](https://img.shields.io/badge/status-prova%20de%20conceito-orange.svg)]()
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.6+-ee4c2c.svg)](https://pytorch.org/)
+[![CUDA](https://img.shields.io/badge/CUDA-12.4-76b900.svg)](https://developer.nvidia.com/cuda-toolkit)
+[![Status](https://img.shields.io/badge/status-em%20desenvolvimento-blue.svg)]()
 
 *Subprojeto de Pós-Doutorado Júnior — PDJ/Fiocruz · Instituto Aggeu Magalhães — Fiocruz Pernambuco*
 
@@ -132,13 +133,14 @@ python -m jepa_spillover.cli --help
 
 ## Fontes de dados
 
-| Base | Conteúdo | Acesso |
+| Base | Conteúdo | Status |
 |---|---|---|
-| **NCBI Virus / Entrez** | Genomas virais + metadados | API pública (requer e-mail) |
-| **VirusHostDB** | Relações vírus–hospedeiro | Download direto (TSV) |
-| **VirHostNet** | Interações moleculares vírus–hospedeiro | Registro/download |
-| **NCBI Taxonomy** | Padronização taxonômica | Download direto |
-| **GBIF / WAHIS** | Contexto ecológico/ocorrência | API / download |
+| **NCBI Virus / Entrez** | ~39k genomas virais (5 famílias) | ✅ Baixado |
+| **GISAID** (EpiCoV, EpiArbo, EpiNiV) | ~12k genomas (Coronaviridae, Flaviviridae, Paramyxoviridae) | ✅ Baixado (credencial institucional) |
+| **VirusHostDB** | Relações vírus–hospedeiro | ✅ Baixado |
+| **NCBI Taxonomy** | Padronização taxonômica | ✅ Baixado |
+| **ICTV MSL41** | 17.554 espécies virais + hierarquia | ✅ Baixado |
+| **IntAct (EMBL-EBI)** | Interações vírus–hospedeiro (integra VirHostNet, MINT, HPIDb) | 🔄 Em download |
 
 Detalhes, termos de uso e citações em [`docs/data_sources.md`](docs/data_sources.md).
 **GISAID** exige credenciamento e **não** é redistribuído por este repositório.
@@ -155,6 +157,30 @@ Detalhes, termos de uso e citações em [`docs/data_sources.md`](docs/data_sourc
 | 6 — Disseminação | Repositório documentado + manuscrito + apresentação |
 
 Cronograma completo em [`docs/roadmap.md`](docs/roadmap.md).
+
+## Status atual do pipeline
+
+| Etapa | Status | Detalhe |
+|---|---|---|
+| Coleta de dados | ✅ Concluído | ~51k sequências (NCBI + GISAID) |
+| Curadoria | ✅ Concluído | 20k sequências, 10 famílias balanceadas |
+| k-mers + PCA | ✅ Concluído | k=4 (benchmark: AUROC 0.9961, 8 MB RAM) |
+| Pré-treino JEPA | 🔄 Em execução | RTX 3050 6GB · ~2.5 batch/s · ~3.5h total |
+| Fine-tuning | ⏳ Aguardando treino | — |
+| Avaliação + ranking | ⏳ Aguardando | — |
+
+### Benchmark k-mers (Jun 2026)
+
+Testamos k ∈ {3, 4, 5, 6} com 3000 sequências, 128 componentes PCA:
+
+| k | Features | Var. explicada | AUROC (5-fold) | RAM |
+|---|---|---|---|---|
+| 3 | 64 | 100% | 0.9948 | 2 MB |
+| **4** | **256** | **98.2%** | **0.9961** | **8 MB** |
+| 5 | 1.024 | 87.2% | 0.9961 | 36 MB |
+| 6 | 4.096 | 75.4% | 0.9947 | 115 MB |
+
+**k=4 selecionado** — melhor trade-off entre qualidade, velocidade e uso de memória.
 
 ## Reprodutibilidade e ciência aberta
 

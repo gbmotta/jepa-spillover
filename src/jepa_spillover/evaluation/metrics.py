@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..logger import get_logger
+
+log = get_logger(__name__)
+
 
 def classification_metrics(y_true, y_score, *, threshold: float = 0.5) -> dict:
     """Calcula AUROC, AUPRC, F1, precisão, recall, especificidade e Brier."""
@@ -37,4 +41,6 @@ def classification_metrics(y_true, y_score, *, threshold: float = 0.5) -> dict:
     tn, fp = int(cm[0, 0]), int(cm[0, 1])
     metrics["specificity"] = float(tn / (tn + fp)) if (tn + fp) else float("nan")
     metrics["brier"] = float(brier_score_loss(y_true, y_score))
+    log.debug("Métricas calculadas: AUROC=%.3f F1=%.3f Brier=%.3f",
+              metrics["auroc"], metrics["f1"], metrics["brier"])
     return metrics

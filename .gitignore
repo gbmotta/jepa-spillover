@@ -28,6 +28,7 @@ data/interim/*
 data/processed/*
 data/external/*
 !data/**/.gitkeep
+downloads/
 *.fasta
 *.fa
 *.fastq
@@ -66,6 +67,12 @@ lightning_logs/
 # ===== Sistema operacional =====
 .DS_Store
 Thumbs.db
+
+# ===== Arquivos pessoais / mídia =====
+*.ogg
+*.mp3
+*.wav
+*.m4a
 
 # ===== IDE =====
 .idea/

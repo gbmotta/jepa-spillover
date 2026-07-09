@@ -34,12 +34,16 @@ def reduce_2d(emb: np.ndarray, *, reducer: str, seed: int, **kwargs) -> np.ndarr
         except ImportError:
             log.warning("umap-learn não instalado, usando t-SNE como fallback")
             reducer = "tsne"
+    import inspect
+
     from sklearn.manifold import TSNE
     perplexity = min(kwargs.get("perplexity", 40), max(5, n - 1))
     log.debug("t-SNE: perplexity=%d", perplexity)
+    # scikit-learn >= 1.5 renomeou 'n_iter' para 'max_iter'.
+    iter_kw = "max_iter" if "max_iter" in inspect.signature(TSNE).parameters else "n_iter"
     coords = TSNE(
         n_components=2, perplexity=perplexity,
-        n_iter=1000, random_state=seed,
+        random_state=seed, **{iter_kw: 1000},
     ).fit_transform(emb)
     log.info("t-SNE concluído: shape %s", coords.shape)
     return coords

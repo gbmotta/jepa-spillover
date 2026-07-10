@@ -1,13 +1,39 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Gera o documento "Subprojeto do Candidato" (Edital PDJ/Fiocruz VPPCB 2026)
-em formato .docx, estruturado segundo os itens obrigatórios (4.4.f) e os
-critérios de avaliação do Anexo IV do edital.
+=============================================================================
+JEPA-Spillover — gerador do Subprojeto do Candidato (PDJ)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/gen_subprojeto_docx.py
 
-Saída: submissao_pdj/Subprojeto_JEPA-Spillover_PDJ.docx
-Depois convertido para PDF via LibreOffice.
+Propósito
+---------
+Gera o documento Word do **Subprojeto do Candidato** (item 4.4.f do Edital
+PDJ/Fiocruz VPPCB 2026), alinhado aos critérios do Anexo IV.
+
+Supervisor / lab atuais
+-----------------------
+Marcelo Henrique Santos Paiva — Laboratório de Entomologia (IAM).
+
+Saídas
+------
+- ``submissao_pdj/Subprojeto_JEPA-Spillover_PDJ.docx``
+- Converter para PDF: ``libreoffice --headless --convert-to pdf …``
+
+Uso
+---
+    python scripts/gen_subprojeto_docx.py
+
+Campos em aberto
+----------------
+Infraestrutura do laboratório e aderência da trajetória (placeholders ``[ ]``).
+=============================================================================
 """
+
 from __future__ import annotations
+
+import logging
 
 from pathlib import Path
 
@@ -19,6 +45,8 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Cm
 
 ROOT = Path(__file__).resolve().parents[1]
+log = logging.getLogger("scripts.gen_subprojeto_docx")
+
 OUT = ROOT / "submissao_pdj" / "Subprojeto_JEPA-Spillover_PDJ.docx"
 
 # ---- Paleta / constantes ----------------------------------------------------
@@ -109,6 +137,7 @@ def make_table(doc, headers, rows, widths=None, header_bg="1F3964", font_size=9.
 
 # =============================================================================
 def build():
+    """Monta e salva o Subprojeto do Candidato (docx) conforme o edital PDJ."""
     doc = Document()
 
     # Estilo base
@@ -169,10 +198,10 @@ def build():
     # Bloco de identificação
     ident = [
         ("Candidato", "Gabriel Bezerra Motta Câmara"),
-        ("Supervisor(a)", "[Nome do(a) supervisor(a) — servidor(a) ativo(a) da Fiocruz]"),
+        ("Supervisor(a)", "Marcelo Henrique Santos Paiva — servidor(a) ativo(a) da Fiocruz"),
         ("Projeto do(a) supervisor(a)", "GenVig-IA — Vigilância Genômica Integrada e Inteligência Computacional para vírus emergentes e zoonóticos (Eixo 3)"),
         ("Unidade", "Instituto Aggeu Magalhães (IAM) — Fiocruz Pernambuco"),
-        ("Laboratório / Grupo", "[Nome do laboratório ou grupo de pesquisa]"),
+        ("Laboratório / Grupo", "Laboratório de Entomologia"),
         ("Modalidade", "Bolsa Nova"),
         ("Vigência proposta", "12 meses (mínimo do edital) — prorrogável conforme normas"),
         ("Grande área", "Ciências da Saúde / Bioinformática / Inteligência Artificial aplicada à Saúde"),
@@ -201,8 +230,8 @@ def build():
     nota = doc.add_paragraph()
     nota.alignment = WD_ALIGN_PARAGRAPH.CENTER
     rn = nota.add_run(
-        "Os campos entre colchetes [ ] devem ser preenchidos com os dados do(a) "
-        "supervisor(a) e do laboratório antes da submissão no sistema Fomento à Pesquisa on-line."
+        "Campos entre colchetes [ ] restantes devem ser preenchidos antes da submissão "
+        "no sistema Fomento à Pesquisa on-line (ex.: infraestrutura do laboratório — em aberto por enquanto)."
     )
     rn.italic = True
     rn.font.size = Pt(8.5)
@@ -301,8 +330,8 @@ def build():
          "priorização proativa de vírus com potencial zoonótico, agregando capacidade analítica "
          "reprodutível e escalável ao grupo. Os produtos do subprojeto (embeddings, modelos e "
          "rankings de risco) retroalimentam os eixos de caracterização e de integração com a "
-         "vigilância (Eixo 4). A convergência entre a expertise biológica/epidemiológica do "
-         "laboratório e a competência computacional do candidato cria sinergia com potencial de "
+         "vigilância (Eixo 4). A convergência entre a expertise em entomologia e saúde pública do "
+         "Laboratório de Entomologia e a competência computacional do candidato cria sinergia com potencial de "
          "gerar publicações conjuntas, novos editais e colaborações.")
 
     # ---- 4. OBJETIVO GERAL --------------------------------------------------
@@ -471,14 +500,12 @@ def build():
     h1(doc, "10. Infraestrutura disponível")
     para(doc,
          "O subprojeto é predominantemente computacional, o que reduz custos e dependências "
-         "laboratoriais. A infraestrutura necessária e disponível inclui:")
-    bullet(doc, "estação de trabalho com GPU NVIDIA (CUDA) para treino de modelos de aprendizado profundo; ambiente Linux com pilha científica Python (PyTorch, scikit-learn, pandas).", bold_prefix="Computação local: ")
-    bullet(doc, "acesso a bases públicas (NCBI, VirusHostDB, IntAct) e credenciamento institucional GISAID para dados genômicos virais.", bold_prefix="Dados: ")
-    bullet(doc, "GitHub e Hugging Face Hub para versionamento, publicação de modelos/datasets e hospedagem do dashboard interativo, com rastreabilidade e ciência aberta.", bold_prefix="Publicação/reprodutibilidade: ")
-    bullet(doc, "infraestrutura de rede, servidores e apoio de TI do Instituto Aggeu Magalhães — Fiocruz Pernambuco; possibilidade de uso de recursos computacionais de alto desempenho da Fiocruz para etapas de maior escala.", bold_prefix="Institucional: ")
+         "laboratoriais. Descrever a infraestrutura disponível no Laboratório de Entomologia "
+         "e no IAM/Fiocruz para a realização das atividades previstas:")
     para(doc,
-         "[Complementar com detalhes específicos do laboratório/grupo: servidores, clusters, "
-         "espaço físico e demais recursos disponibilizados pelo(a) supervisor(a).]",
+         "[Computação local/GPU, servidores/HPC, ambiente de software, acesso a bases de dados, "
+         "publicação/reprodutibilidade, espaço físico e demais recursos institucionais — "
+         "a preencher com o(a) supervisor(a).]",
          italic=True, color=CINZA)
 
     # ---- 11. CONTRIBUIÇÃO PARA O GRUPO -------------------------------------
@@ -505,7 +532,7 @@ def build():
     para(doc,
          "A formação e a expertise técnico-científica do candidato — em ciência de dados, "
          "aprendizado de máquina e desenvolvimento de software reprodutível — complementam "
-         "diretamente as competências biológicas e epidemiológicas do grupo. O candidato aporta a "
+         "diretamente as competências em entomologia e saúde pública do Laboratório de Entomologia. O candidato aporta a "
          "capacidade de implementar, treinar e avaliar modelos de IA de fronteira (JEPA/"
          "Transformers), estruturar pipelines de dados escaláveis e publicar resultados de forma "
          "aberta e reprodutível. Essa integração acelera a execução do projeto do(a) supervisor(a), "
@@ -601,8 +628,10 @@ def build():
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUT)
+    log.info("Documento gerado: %s", OUT)
     print(f"OK: {OUT}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
     build()

@@ -1,15 +1,29 @@
-"""Download IntAct (EMBL-EBI) e filtra apenas interações vírus-hospedeiro.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — download IntAct (interações vírus–hospedeiro)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/download_intact_virushost.py
 
-IntAct é a base canônica que integra VirHostNet, MINT, DIP, HPIDb e outros.
-Filtramos apenas pares onde um parceiro é vírus (taxon < 0 ou vírus conhecido).
+Propósito
+---------
+Baixa o dump completo do IntAct (EMBL-EBI) e filtra pares vírus–hospedeiro.
+IntAct agrega VirHostNet, MINT, DIP, HPIDb e outras fontes MITAB.
 
-Saída:
-  data/external/intact/intact_virus_host.parquet   — interações vírus-hospedeiro
-  data/external/intact/intact_virus_host.mitab     — formato MITAB 2.5 bruto filtrado
+Saídas
+------
+- ``data/external/intact/intact_virus_host.parquet``
+- ``data/external/intact/intact_virus_host.mitab``
+- ``intact.zip`` / ``intact.txt`` intermediários
 
-Uso:
+Uso
+---
     python scripts/download_intact_virushost.py
-    python scripts/download_intact_virushost.py --skip-download   # se já baixou o zip
+    python scripts/download_intact_virushost.py --skip-download
+    python scripts/download_intact_virushost.py --debug
+=============================================================================
 """
 
 from __future__ import annotations
@@ -172,7 +186,13 @@ def main() -> None:
     parser.add_argument("--skip-download", action="store_true",
                         help="Pular download se o zip já existe")
     parser.add_argument("--output", default=str(OUT_DIR))
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
+    if args.debug:
+        import os
+        os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        from jepa_spillover.logger import set_log_level
+        set_log_level("DEBUG")
 
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)

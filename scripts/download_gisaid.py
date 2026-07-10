@@ -1,35 +1,35 @@
-#!/usr/bin/env python
-"""Processa e ingesta arquivos FASTA/metadata baixados manualmente do GISAID.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — ingestão GISAID (download manual → padronização)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/download_gisaid.py
 
-O GISAID não permite download automatizado via API pública.
-Você deve baixar os arquivos no site (https://gisaid.org) e depois
-executar este script para padronizá-los no formato do pipeline.
+Propósito
+---------
+O GISAID **não** permite download automatizado. Este script apenas processa
+FASTA/metadata já baixados manualmente (EpiFlu, EpiCoV, EpiRSV, EpiNiV,
+EpiArbo) e os padroniza para o pipeline.
 
-Bases cobertas:
-  EpiFlu  — influenza (H5N1, H7N9, H3N2 humano+aviário, H1N1pdm, H9N2)
-  EpiCoV  — coronavírus (SARS-CoV-2, MERS-CoV, bat-CoV)
-  EpiRSV  — RSV / Pneumoviridae (relevância zoonótica crescente)
-  EpiNiV  — Nipah e Hendra (Paramyxoviridae, spillover morcego→humano)
-  EpiArbo — Dengue, Zika, Chikungunya, Oropouche, West Nile, Febre Amarela
+Importante (termos de uso)
+--------------------------
+Sequências GISAID **não devem ser redistribuídas**. Mantê-las em
+``data/raw/gisaid/`` (gitignored) e credenciamento institucional.
 
-Uso após download manual:
-    # EpiCoV (bat/MERS) + EpiNiV (Nipah) + EpiArbo (Dengue, Zika, Chikungunya)
-    python scripts/download_gisaid.py \\
-        --epicov   downloads/gisaid_hcov-19_bat.fasta \\
-        --epiniv   downloads/gisaid_nipah.fasta \\
-        --epiarbo  downloads/gisaid_dengue.fasta \\
-                   downloads/gisaid_zika.fasta \\
-        --metadata downloads/gisaid_*_metadata.tsv \\
-        --config   config/config.yaml
+Uso
+---
+    python scripts/download_gisaid.py \
+        --epicov downloads/gisaid_hcov.fasta \
+        --epiarbo downloads/gisaid_dengue.fasta \
+        --config config/config.yaml
 
-Saída:
-    data/raw/gisaid/EpiCoV.fasta
-    data/raw/gisaid/EpiNiV.fasta
-    data/raw/gisaid/EpiArbo.fasta
-    data/raw/gisaid/EpiRSV.fasta
-    data/raw/gisaid/EpiFlu.fasta   (se disponível)
-    data/raw/gisaid/metadata.parquet
-    data/raw/gisaid/gisaid_combined.parquet
+Saídas
+------
+- FASTA padronizados em ``data/raw/gisaid/``
+- Manifestos de proveniência
+=============================================================================
 """
 
 from __future__ import annotations
@@ -184,7 +184,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.debug:
-        import os; os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        import os
+        os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        from jepa_spillover.logger import set_log_level
+        set_log_level("DEBUG")
+
 
     cfg = Config.load(args.config)
     out_dir = cfg.resolve("data_raw") / "gisaid"

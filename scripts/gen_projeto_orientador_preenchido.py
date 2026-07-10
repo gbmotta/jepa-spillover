@@ -1,14 +1,39 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Gera uma versão PREENCHIDA e realista do "Projeto de pesquisa do orientador"
-(item 4.4.b do Edital PDJ/Fiocruz VPPCB 2026), redigido como um projeto
-guarda-chuva de bioinformática/vigilância genômica no IAM-Fiocruz, do qual o
-subprojeto JEPA-Spillover é a componente de Inteligência Artificial.
+=============================================================================
+JEPA-Spillover — gerador do Projeto do Orientador (versão preenchida)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/gen_projeto_orientador_preenchido.py
 
-Projeto fictício, porém plausível, com base no escopo real do candidato.
-Saída: submissao_pdj/Projeto_Orientador_PDJ.docx (+ PDF via LibreOffice)
+Propósito
+---------
+Gera o **Projeto de pesquisa do supervisor** (item 4.4.b) na versão
+guarda-chuva GenVig-IA, da qual o JEPA-Spillover é o Eixo 3 (IA).
+
+Supervisor / lab
+----------------
+Marcelo Henrique Santos Paiva — Laboratório de Entomologia (IAM).
+
+Saídas
+------
+- ``submissao_pdj/Projeto_Orientador_PDJ.docx`` (+ PDF via LibreOffice)
+
+Uso
+---
+    python scripts/gen_projeto_orientador_preenchido.py
+
+Nota
+----
+Seção de infraestrutura permanece em aberto (placeholder) até confirmação
+com o laboratório.
+=============================================================================
 """
+
 from __future__ import annotations
+
+import logging
 
 from pathlib import Path
 
@@ -19,6 +44,8 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Cm
 
 ROOT = Path(__file__).resolve().parents[1]
+log = logging.getLogger("scripts.gen_projeto_orientador_preenchido")
+
 OUT = ROOT / "submissao_pdj" / "Projeto_Orientador_PDJ.docx"
 
 AZUL = RGBColor(0x1F, 0x39, 0x64)
@@ -95,6 +122,7 @@ def make_table(doc, headers, rows, widths=None, font_size=9.5):
 
 
 def build():
+    """Monta e salva o Projeto do Orientador preenchido (GenVig-IA / Entomologia)."""
     doc = Document()
     normal = doc.styles["Normal"]
     normal.font.name = "Calibri"
@@ -146,11 +174,11 @@ def build():
     doc.add_paragraph()
 
     ident = [
-        ("Coordenador(a) / Supervisor(a)", "Túlio Campos [confirmar nome completo e titulação]"),
+        ("Coordenador(a) / Supervisor(a)", "Marcelo Henrique Santos Paiva"),
         ("Unidade", "Instituto Aggeu Magalhães (IAM) — Fiocruz Pernambuco"),
-        ("Laboratório / Núcleo", "Núcleo de Bioinformática (NBI) [confirmar]"),
+        ("Laboratório / Núcleo", "Laboratório de Entomologia"),
         ("Grande área", "Ciências Biológicas / Bioinformática / Saúde Coletiva"),
-        ("Linha de pesquisa", "Vigilância genômica, epidemiologia molecular e IA aplicada à saúde"),
+        ("Linha de pesquisa", "Entomologia, vigilância de vetores e IA aplicada à saúde"),
         ("Subprojeto PDJ vinculado", "JEPA-Spillover — candidato Gabriel Bezerra Motta Câmara"),
         ("Duração", "36 meses (subprojeto PDJ: 12 meses, renovável)"),
     ]
@@ -313,8 +341,8 @@ def build():
          "metodológica em inteligência artificial: a primeira aplicação, ao domínio de vigilância "
          "genômica de vírus de RNA, das arquiteturas preditivas em espaço latente (JEPA). A "
          "expertise do candidato em aprendizado de máquina e desenvolvimento de software "
-         "reprodutível complementa diretamente a competência do grupo em biologia molecular e "
-         "epidemiologia genômica, criando sinergia com potencial de publicações conjuntas, "
+         "reprodutível complementa diretamente a competência do Laboratório de Entomologia em entomologia e "
+         "epidemiologia de doenças transmitidas por vetores, criando sinergia com potencial de publicações conjuntas, "
          "captação de novos financiamentos e consolidação de uma linha de pesquisa em IA aplicada "
          "à saúde no IAM. Os produtos do subprojeto (embeddings, modelos, rankings) retroalimentam "
          "os Eixos 2 e 4, fechando o ciclo entre caracterização, predição e vigilância.")
@@ -331,15 +359,10 @@ def build():
     # ---------------- 7. Infraestrutura ----------------
     h1(doc, "7. Infraestrutura disponível")
     para(doc,
-         "O projeto é conduzido no Instituto Aggeu Magalhães (Fiocruz-PE), que dispõe de "
-         "infraestrutura de bioinformática e computação científica, incluindo servidores e "
-         "recursos de processamento (CPU/GPU) para análises genômicas e treinamento de modelos de "
-         "aprendizado profundo, além de acesso às redes e plataformas de vigilância genômica da "
-         "Fiocruz. O grupo conta com experiência consolidada em análise de dados de sequenciamento "
-         "e epidemiologia molecular, e com credenciamento institucional para bases de acesso "
-         "controlado (GISAID). A componente de IA (subprojeto) utiliza estação com GPU e "
-         "publicação aberta de código e modelos (GitHub, Hugging Face). [Detalhar equipamentos, "
-         "servidores/HPC e espaço físico específicos do NBI/IAM.]")
+         "[Descrever a infraestrutura do Laboratório de Entomologia/grupo/IAM: instalações, "
+         "equipamentos, recursos computacionais (GPU/HPC), bases de dados e apoio institucional — "
+         "a preencher.]",
+         italic=True, color=CINZA)
 
     # ---------------- 8. Cronograma ----------------
     h1(doc, "8. Cronograma (36 meses)")
@@ -366,9 +389,9 @@ def build():
 
     # ---------------- 9. Equipe ----------------
     h1(doc, "9. Equipe e colaborações")
-    bullet(doc, "Túlio Campos [confirmar] — coordenação, bioinformática e epidemiologia molecular (IAM/Fiocruz).", bold_prefix="Supervisor: ")
+    bullet(doc, "Marcelo Henrique Santos Paiva — coordenação, entomologia e saúde pública / vigilância de vetores (IAM/Fiocruz).", bold_prefix="Supervisor: ")
     bullet(doc, "Gabriel Bezerra Motta Câmara — modelagem computacional e IA (subprojeto JEPA-Spillover).", bold_prefix="Bolsista PDJ: ")
-    bullet(doc, "[Demais membros do Núcleo de Bioinformática e colaboradores do IAM].", bold_prefix="Equipe: ")
+    bullet(doc, "[Demais membros do Laboratório de Entomologia e colaboradores do IAM].", bold_prefix="Equipe: ")
     bullet(doc, "[Redes de vigilância genômica da Fiocruz; colaborações nacionais e internacionais].", bold_prefix="Colaborações: ")
 
     # ---------------- 10. Referências ----------------
@@ -398,8 +421,10 @@ def build():
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUT)
+    log.info("Documento gerado: %s", OUT)
     print(f"OK: {OUT}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
     build()

@@ -1,14 +1,32 @@
 #!/usr/bin/env bash
 # =============================================================================
-# resume.sh — Retoma o pipeline JEPA-Spillover após reinício do PC
+# JEPA-Spillover — resume.sh
+# =============================================================================
+# Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+# Módulo  : scripts/resume.sh
 #
-# Uso:
+# Propósito
+# ---------
+# Retoma o pipeline após reinício do PC (ou inicia do zero):
+#   1. Verifica GPU / CUDA
+#   2. Detecta checkpoint intermediário (jepa_genomic_latest.pt) ou final
+#   3. train → features → finetune → evaluate → validate_biology
+#   4. (Opcional) upload do dashboard para Hugging Face Space
+#   5. (Opcional) git commit de artefatos de resultados
+#
+# Uso
+# ---
 #   bash scripts/resume.sh
 #
-# O que faz:
-#   1. Verifica GPU e ambiente
-#   2. Retoma/inicia pré-treino JEPA (com checkpoint automático a cada 5 épocas)
-#   3. Ao terminar: features → finetune → evaluate → upload HF
+# Requisitos
+# ----------
+# - Pacote instalado (`pip install -e .`) para o comando `jepa-spillover`
+# - Token HF opcional em ~/Documentos/huggin_token.txt
+#
+# Segurança
+# ---------
+# Não imprima o token HF em logs compartilhados. O arquivo de token deve
+# permanecer fora do repositório.
 # =============================================================================
 set -euo pipefail
 

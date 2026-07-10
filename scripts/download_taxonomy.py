@@ -1,8 +1,27 @@
-#!/usr/bin/env python
-"""Baixa e extrai o taxdump do NCBI Taxonomy.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — download NCBI Taxonomy (taxdump)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/download_taxonomy.py
 
-Uso:
+Propósito
+---------
+Baixa ``taxdump.tar.gz`` do NCBI e, opcionalmente, extrai ``nodes.dmp`` e
+``names.dmp`` para padronização taxonômica na curadoria.
+
+Segurança
+---------
+Extração com filtro anti path-traversal (apenas nomes basenames permitidos;
+``filter="data"`` em Python ≥ 3.12).
+
+Uso
+---
     python scripts/download_taxonomy.py --config config/config.yaml --extract
+    python scripts/download_taxonomy.py --debug
+=============================================================================
 """
 
 from __future__ import annotations
@@ -20,6 +39,7 @@ log = get_logger("scripts.download_taxonomy")
 
 
 def main() -> None:
+    """CLI: download taxdump e, se ``--extract``, extrai nodes/names.dmp com segurança."""
     parser = argparse.ArgumentParser(description="Download do NCBI Taxonomy (taxdump)")
     parser.add_argument("--config", default=str(PROJECT_ROOT / "config" / "config.yaml"))
     parser.add_argument("--extract", action="store_true", help="Extrai nodes.dmp/names.dmp")
@@ -27,7 +47,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.debug:
-        import os; os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        import os
+        os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        from jepa_spillover.logger import set_log_level
+        set_log_level("DEBUG")
+
 
     cfg = Config.load(args.config)
     url = cfg.get_path(
@@ -45,8 +69,17 @@ def main() -> None:
         log.info("Extraindo nodes.dmp e names.dmp...")
         with tarfile.open(target, "r:gz") as tar:
             members = [m for m in tar.getmembers() if m.name in ("nodes.dmp", "names.dmp")]
+            extract_kw = {"path": out_dir}
+            # Python 3.12+: filter="data" mitiga path traversal
+            import inspect
+            if "filter" in inspect.signature(tar.extract).parameters:
+                extract_kw["filter"] = "data"
             for member in tqdm(members, desc="Extraindo", unit="arquivo", ncols=90):
-                tar.extract(member, path=out_dir)
+                # Bloqueia path traversal mesmo em Pythons antigos
+                if Path(member.name).name != member.name or ".." in member.name:
+                    log.warning("Membro tar suspeito ignorado: %s", member.name)
+                    continue
+                tar.extract(member, **extract_kw)
                 log.debug("Extraído: %s (%.1f MB)", member.name, member.size / 1e6)
         log.info("Extração concluída em %s", out_dir)
 

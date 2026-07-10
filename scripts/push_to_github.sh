@@ -1,12 +1,30 @@
 #!/usr/bin/env bash
-# ============================================================
-# Sobe o repositório JEPA-Spillover para o GitHub.
+# =============================================================================
+# JEPA-Spillover — push_to_github.sh
+# =============================================================================
+# Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+# Módulo  : scripts/push_to_github.sh
 #
-# Uso:
+# Propósito
+# ---------
+# Inicializa (se necessário) e publica o repositório no GitHub.
+#
+# Uso
+# ---
 #   GH_USER=seu_usuario REPO=jepa-spillover bash scripts/push_to_github.sh
 #
-# Requisitos: git configurado. Opcional: GitHub CLI (`gh`) para criar o repo remoto.
-# ============================================================
+# Variáveis
+# ---------
+#   GH_USER, REPO, BRANCH, REMOTE_URL
+#
+# Requisitos
+# ----------
+#   git; opcionalmente GitHub CLI (`gh`) para criar o remoto.
+#
+# Segurança
+# ---------
+# Não faça commit de config/secrets.yaml, tokens ou dados GISAID.
+# =============================================================================
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

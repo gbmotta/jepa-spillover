@@ -1,15 +1,31 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Gera um ESQUELETO/RASCUNHO do "Projeto de pesquisa do orientador" (item 4.4.b
-do Edital PDJ/Fiocruz VPPCB 2026), ao qual o subprojeto do candidato se vincula.
+=============================================================================
+JEPA-Spillover — gerador do Projeto do Orientador (esqueleto)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/gen_projeto_orientador_docx.py
 
-Estruturado segundo os critérios de avaliação do edital (Anexo IV — Bloco
-Projeto): relevância científica, relevância para o SUS, desenho/abordagem
-metodológica. Campos entre [ ] devem ser preenchidos pelo(a) supervisor(a).
+Propósito
+---------
+Gera um **esqueleto/rascunho** do projeto do orientador (item 4.4.b), com
+orientações em itálico para preenchimento. Preferir a versão preenchida
+(``gen_projeto_orientador_preenchido.py``) na submissão.
 
-Saída: submissao_pdj/Projeto_Orientador_ESQUELETO.docx (+ PDF via LibreOffice)
+Saídas
+------
+- ``submissao_pdj/Projeto_Orientador_ESQUELETO.docx``
+
+Uso
+---
+    python scripts/gen_projeto_orientador_docx.py
+=============================================================================
 """
+
 from __future__ import annotations
+
+import logging
 
 from pathlib import Path
 
@@ -20,6 +36,8 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Cm
 
 ROOT = Path(__file__).resolve().parents[1]
+log = logging.getLogger("scripts.gen_projeto_orientador_docx")
+
 OUT = ROOT / "submissao_pdj" / "Projeto_Orientador_ESQUELETO.docx"
 
 AZUL = RGBColor(0x1F, 0x39, 0x64)
@@ -101,6 +119,7 @@ def make_table(doc, headers, rows, widths=None, font_size=9.5):
 
 
 def build():
+    """Monta e salva o esqueleto do Projeto do Orientador (campos [ ] para preencher)."""
     doc = Document()
     normal = doc.styles["Normal"]
     normal.font.name = "Calibri"
@@ -289,8 +308,10 @@ def build():
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUT)
+    log.info("Documento gerado: %s", OUT)
     print(f"OK: {OUT}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
     build()

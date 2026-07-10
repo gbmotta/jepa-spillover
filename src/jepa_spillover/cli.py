@@ -26,6 +26,8 @@ def _add_config(p):
 def _apply_debug(args) -> None:
     if getattr(args, "debug", False):
         os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        from .logger import set_log_level
+        set_log_level("DEBUG")
 
 
 def cmd_synth(args):

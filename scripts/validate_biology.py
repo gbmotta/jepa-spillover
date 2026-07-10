@@ -1,23 +1,56 @@
-"""Validação biológica do ranking e labels contra conhecimento estabelecido.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — validação biológica do ranking e dos labels
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/validate_biology.py
 
-Três camadas:
-  1. Sanidade: vírus de referência com risco humano conhecido
-  2. Label audit: detecta sequências com label=0 mas vírus sabidamente humanos
-  3. Comparação com SpillOver (EcoHealth Alliance) se disponível
+Propósito
+---------
+Audita o ranking de priorização e os ``spillover_label`` contra conhecimento
+estabelecido (WHO/CDC/ICTV), em três camadas:
+
+  1. Sanidade — posição/label de vírus de referência (SARS, Ebola, Nipah…)
+  2. Auditoria — label=0 em vírus sabidamente humanos (erro de curadoria)
+  3. Roadmap — SpillOver / PREDICT / validação retrospectiva (documentado)
+
+Entradas
+--------
+- ``results/rankings/virus_priority_ranking.csv`` (após ``evaluate``)
+- ``data/processed/dataset.parquet`` (após ``curate``)
+
+Saídas
+------
+- ``results/validation/known_pathogens_audit.csv``
+- ``results/validation/label_errors.csv``
+- ``results/validation/ranking_quality.json``
+
+Uso
+---
+    python scripts/validate_biology.py
+    python scripts/validate_biology.py --debug
+=============================================================================
 """
 
 from __future__ import annotations
 
+import argparse
 import json
-import re
+import os
 import sys
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
+from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
+from jepa_spillover.logger import get_logger, set_log_level  # noqa: E402
+
+log = get_logger("scripts.validate_biology")
 
 # ── Conhecimento a priori: vírus com risco humano CONFIRMADO ────────────────
 # Fonte: WHO, CDC, ICTV, literatura (não é predição — é ground truth)
@@ -65,29 +98,37 @@ KNOWN_ANIMAL_ONLY: dict[str, dict] = {
 
 
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    rank = pd.read_csv(ROOT / "results" / "rankings" / "virus_priority_ranking.csv")
-    df   = pd.read_parquet(ROOT / "data" / "processed" / "dataset.parquet",
-                           columns=["accession", "description", "host", "source"])
-    return rank.merge(df, on="accession", how="left"), df
+    rank_path = ROOT / "results" / "rankings" / "virus_priority_ranking.csv"
+    ds_path = ROOT / "data" / "processed" / "dataset.parquet"
+    if not rank_path.exists():
+        raise FileNotFoundError(f"Ranking não encontrado: {rank_path} — rode 'evaluate' antes.")
+    if not ds_path.exists():
+        raise FileNotFoundError(f"Dataset não encontrado: {ds_path} — rode 'curate' antes.")
+    log.info("Carregando ranking=%s dataset=%s", rank_path, ds_path)
+    rank = pd.read_csv(rank_path)
+    df = pd.read_parquet(ds_path, columns=["accession", "description", "host", "source"])
+    merged = rank.merge(df, on="accession", how="left")
+    log.info("Merge: %d linhas no ranking, %d no dataset", len(rank), len(df))
+    return merged, df
 
 
 def validate_known_pathogens(merged: pd.DataFrame) -> pd.DataFrame:
     """Camada 1: verifica posição e label dos vírus de referência."""
     n = len(merged)
     rows = []
-    for virus, info in KNOWN_HUMAN_PATHOGENS.items():
+    for virus, info in tqdm(KNOWN_HUMAN_PATHOGENS.items(), desc="Sanidade", unit="vírus", ncols=90):
         hits = merged[merged["description"].str.contains(virus, case=False, na=False)]
         if hits.empty:
             rows.append({"virus": virus, "family": info["family"], "risco_real": info["risk"],
                          "n_seqs": 0, "melhor_rank": None, "pct_top": None,
                          "label_correto": None, "label_obtido": None, "status": "❌ NÃO ENCONTRADO"})
+            log.debug("[%s] não encontrado no dataset", virus)
             continue
         best = hits.sort_values("priority_score", ascending=False).iloc[0]
         rank_pos = int((merged["priority_score"] >= best["priority_score"]).sum())
         pct = 100 * rank_pos / n
         label_obtido = best["spillover_label"]
         label_correto = 1  # todos os KNOWN_HUMAN_PATHOGENS devem ser 1
-        # Avaliar
         if rank_pos <= 0.05 * n and label_obtido == 1:
             status = "✅ OK"
         elif rank_pos <= 0.20 * n and label_obtido == 1:
@@ -102,13 +143,14 @@ def validate_known_pathogens(merged: pd.DataFrame) -> pd.DataFrame:
             "label_correto": label_correto, "label_obtido": label_obtido,
             "status": status,
         })
+        log.debug("[%s] rank=%d (%.1f%%) label=%s status=%s", virus, rank_pos, pct, label_obtido, status)
     return pd.DataFrame(rows)
 
 
 def audit_label_errors(merged: pd.DataFrame) -> pd.DataFrame:
     """Camada 2: detecta sequências com label=0 mas vírus sabidamente humanos."""
     errors = []
-    for virus, info in KNOWN_HUMAN_PATHOGENS.items():
+    for virus, info in tqdm(KNOWN_HUMAN_PATHOGENS.items(), desc="Audit labels", unit="vírus", ncols=90):
         wrong = merged[
             merged["description"].str.contains(virus, case=False, na=False) &
             (merged["spillover_label"] == 0)
@@ -124,6 +166,7 @@ def audit_label_errors(merged: pd.DataFrame) -> pd.DataFrame:
                 "problema": "label=0 mas vírus reconhecidamente infecta humanos",
                 "causa_provavel": "sequência de animal reservoir (label por host da sequência, não da espécie)",
             })
+    log.info("Auditoria de labels: %d erros potenciais", len(errors))
     return pd.DataFrame(errors)
 
 
@@ -134,7 +177,6 @@ def compute_ranking_quality(result: pd.DataFrame) -> dict:
     warn  = found[found["status"].str.startswith("⚠️")]
     err   = found[found["status"].str.startswith("❌")]
 
-    # Recall@20%: fração dos vírus de referência no top 20%
     recall_20 = len(found[found["pct_top"] <= 20]) / max(len(found), 1)
 
     return {
@@ -148,60 +190,44 @@ def compute_ranking_quality(result: pd.DataFrame) -> dict:
     }
 
 
-def main():
-    print("Carregando dados...")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Validação biológica do ranking JEPA-Spillover")
+    parser.add_argument("--debug", action="store_true")
+    args = parser.parse_args()
+    if args.debug:
+        os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        set_log_level("DEBUG")
+
+    log.info("=== Validação biológica ===")
     merged, _ = load_data()
 
-    print("\n" + "=" * 70)
-    print("CAMADA 1 — Sanidade: vírus de referência vs ranking/label")
-    print("=" * 70)
+    log.info("CAMADA 1 — Sanidade: vírus de referência vs ranking/label")
     result = validate_known_pathogens(merged)
+    # Tabela humana no stdout (produto); detalhes no log
     print(result[["virus", "family", "risco_real", "n_seqs", "pct_top",
                    "label_obtido", "status"]].to_string(index=False))
 
     quality = compute_ranking_quality(result)
-    print(f"\nResumo: {quality['status_ok']} ✅ | {quality['status_aviso']} ⚠️  | {quality['status_erro']} ❌")
-    print(f"Recall@20%: {quality['recall_at_20pct']:.1%} (fração de vírus de referência no top 20% do ranking)")
-    print(f"Mediana posição no ranking: top {quality['mediana_rank_pct']:.1f}%")
+    log.info("Resumo: %d OK | %d aviso | %d erro | Recall@20%%=%.1f%% | mediana top %.1f%%",
+             quality["status_ok"], quality["status_aviso"], quality["status_erro"],
+             100 * quality["recall_at_20pct"], quality["mediana_rank_pct"] or float("nan"))
 
-    print("\n" + "=" * 70)
-    print("CAMADA 2 — Auditoria de labels incorretos")
-    print("=" * 70)
+    log.info("CAMADA 2 — Auditoria de labels incorretos")
     errors = audit_label_errors(merged)
     if errors.empty:
-        print("Nenhum erro de label detectado.")
+        log.info("Nenhum erro de label detectado.")
     else:
-        print(f"{len(errors)} sequências com label=0 mas vírus sabidamente humanos:")
+        log.warning("%d sequências com label=0 mas vírus sabidamente humanos", len(errors))
         print(errors[["accession", "virus_ref", "risco_real", "host_descricao", "causa_provavel"]].to_string(index=False))
 
-    print("\n" + "=" * 70)
-    print("CAMADA 3 — O que precisamos para validação formal")
-    print("=" * 70)
-    print("""
-  A. SpillOver Risk Tool (EcoHealth Alliance, 2020 — DOI: 10.1371/journal.pntd.0008487)
-     → Compara ranking do nosso modelo vs score publicado para ~900 vírus mamíferos
-     → Pearson r e Spearman rho entre nossos scores e os deles
+    log.info("CAMADA 3 — Próximos passos de validação formal (SpillOver/PREDICT/retrospectiva)")
 
-  B. PREDICT zoonotic virus database (USAID)
-     → Lista de ~160 vírus confirmados como zoonóticos
-     → Calcular precision@K e recall@K do nosso ranking
-
-  C. Validação retrospectiva
-     → Treinar com dados pré-2019, avaliar se SARS-CoV-2 ficaria no top 5%
-     → Treinar com dados pré-2013, avaliar se MERS ficaria no top 5%
-
-  D. Comparação com GenBank host annotation
-     → Para cada TaxID viral, verificar se alguma sequência GenBank tem [host=Homo sapiens]
-     → Se sim → label deve ser 1 (independente do host da sequência específica)
-    """)
-
-    # Salvar resultados
     out = ROOT / "results" / "validation"
     out.mkdir(parents=True, exist_ok=True)
     result.to_csv(out / "known_pathogens_audit.csv", index=False)
     errors.to_csv(out / "label_errors.csv", index=False)
-    (out / "ranking_quality.json").write_text(json.dumps(quality, indent=2))
-    print(f"Resultados salvos em {out}")
+    (out / "ranking_quality.json").write_text(json.dumps(quality, indent=2), encoding="utf-8")
+    log.info("Resultados salvos em %s", out)
 
 
 if __name__ == "__main__":

@@ -1,20 +1,33 @@
-#!/usr/bin/env python
-"""Segundo lote de genomas virais do NCBI — famílias adicionais de relevância zoonótica.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — download de genomas virais (NCBI Entrez) — Lote 2
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/download_ncbi_batch2.py
 
-Famílias incluídas (complementam o lote 1):
-  - Flaviviridae    : Dengue, Zika, Febre Amarela, West Nile, TBEV
-  - Phenuiviridae   : Hantavirus, Rift Valley Fever (RVFV)
-  - Nairoviridae    : Febre Hemorrágica da Crimeia-Congo (CCHFV)
-  - Rhabdoviridae   : Lyssavirus (raiva) + outros
-  - Togaviridae     : Chikungunya, Alphavirus
-  - Peribunyaviridae: Vírus La Crosse, Oropouche, Bunyamwera
-  - Reoviridae      : Rotavirus, Orbivirus (Língua Azul)
-  - Picornaviridae  : Vírus de aftosa, enterovirus zoonóticos
+Propósito
+---------
+Complementa o lote 1 com famílias adicionais de relevância zoonótica
+(Flaviviridae, Phenuiviridae, Nairoviridae, Rhabdoviridae, Togaviridae,
+Peribunyaviridae, Reoviridae, Picornaviridae). Famílias já presentes em
+``data/raw/ncbi_virus/`` são **puladas** (idempotente).
 
-Uso:
+Entradas / Saídas / Credenciais
+-------------------------------
+Idênticos ao lote 1 (``download_ncbi_virus.py``).
+
+Uso
+---
     python scripts/download_ncbi_batch2.py --config config/config.yaml
-    python scripts/download_ncbi_batch2.py --config config/config.yaml --max 2000
-    JEPA_LOG_LEVEL=DEBUG python scripts/download_ncbi_batch2.py ...
+    python scripts/download_ncbi_batch2.py --max 3000 --min-length 1000
+    python scripts/download_ncbi_batch2.py --family Peribunyaviridae --debug
+
+Retry
+-----
+esearch/efetch com backoff exponencial (até 5 tentativas por lote).
+=============================================================================
 """
 
 from __future__ import annotations
@@ -47,6 +60,24 @@ BATCH2_FAMILIES = {
 
 def fetch_family(entrez, family: str, *, min_length: int, max_records: int,
                  max_retries: int = 5) -> str:
+    """Busca e baixa FASTA de uma família (lote 2) com retry/backoff.
+
+    Parameters
+    ----------
+    entrez :
+        ``Bio.Entrez`` configurado.
+    family :
+        Nome da família viral.
+    min_length, max_records :
+        Filtros de esearch.
+    max_retries :
+        Tentativas por chamada esearch/efetch (backoff 2^attempt segundos).
+
+    Returns
+    -------
+    str
+        FASTA concatenado; string vazia se sem IDs.
+    """
     query = f'"{family}"[Organism] AND {min_length}:99999999[Sequence Length]'
     log.debug("Entrez esearch: %s", query)
 
@@ -115,6 +146,9 @@ def main() -> None:
     if args.debug:
         import os
         os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        from jepa_spillover.logger import set_log_level
+        set_log_level("DEBUG")
+
 
     cfg = Config.load(args.config)
     email = cfg.get_path("data_sources.ncbi_virus.email")
@@ -130,7 +164,12 @@ def main() -> None:
     api_key = cfg.get_path("data_sources.ncbi_virus.api_key")
     if api_key:
         Entrez.api_key = api_key
-        log.info("API key configurada (10 req/s)")
+        log.info("API key configurada via env/secrets (10 req/s)")
+    else:
+        log.warning(
+            "Sem NCBI_API_KEY — limite ~3 req/s. "
+            "Defina em config/secrets.yaml ou export NCBI_API_KEY=..."
+        )
 
     families = args.family or list(BATCH2_FAMILIES.keys())
     out_dir = cfg.resolve("data_raw") / "ncbi_virus"

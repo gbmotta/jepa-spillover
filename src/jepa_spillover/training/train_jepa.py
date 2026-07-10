@@ -16,6 +16,7 @@ from tqdm import tqdm
 from ..config import Config, get_device, set_global_seed
 from ..logger import get_logger
 from ..models.jepa_genomic import GenomicJEPA, SequenceTokenizer
+from ..security import safe_torch_load
 
 log = get_logger(__name__)
 
@@ -118,7 +119,7 @@ def train(config_path: str | None = None) -> Path:
     # ── Retomar de checkpoint anterior se existir ──────────────────────────
     start_epoch = 0
     if ckpt_tmp.exists():
-        saved = torch.load(ckpt_tmp, map_location=device)
+        saved = safe_torch_load(ckpt_tmp, map_location=device)
         if saved.get("epoch", 0) > 0:
             model.load_state_dict(saved["state_dict"])
             opt.load_state_dict(saved["optimizer"])
@@ -128,7 +129,7 @@ def train(config_path: str | None = None) -> Path:
         else:
             log.info("Checkpoint encontrado mas sem época salva — iniciando do zero.")
     elif ckpt.exists():
-        saved = torch.load(ckpt, map_location=device)
+        saved = safe_torch_load(ckpt, map_location=device)
         model.load_state_dict(saved["state_dict"])
         log.info("Pesos carregados de checkpoint final anterior — treinando do zero.")
 
@@ -186,7 +187,7 @@ def _export_embeddings(cfg, model, tokenizer, df, max_len, device):
         embs.append(model.encode(tokens).squeeze(0).cpu().numpy())
     emb = np.vstack(embs).astype(np.float32)
     out = cfg.resolve("data_processed") / "jepa_embeddings.npz"
-    np.savez_compressed(out, embeddings=emb, accession=df["accession"].to_numpy())
+    np.savez_compressed(out, embeddings=emb, accession=df["accession"].astype(str).to_numpy())
     log.info("Embeddings JEPA salvos: %s — shape %s", out, emb.shape)
 
 

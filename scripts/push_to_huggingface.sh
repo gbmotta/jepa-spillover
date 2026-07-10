@@ -1,13 +1,29 @@
 #!/usr/bin/env bash
-# ============================================================
-# Sobe modelos/dataset/space do JEPA-Spillover para o Hugging Face Hub.
+# =============================================================================
+# JEPA-Spillover — push_to_huggingface.sh
+# =============================================================================
+# Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+# Módulo  : scripts/push_to_huggingface.sh
 #
-# Uso:
+# Propósito
+# ---------
+# Publica modelo, dataset ou Space no Hugging Face Hub.
+#
+# Uso
+# ---
 #   HF_USER=seu_usuario bash scripts/push_to_huggingface.sh model
 #   HF_USER=seu_usuario bash scripts/push_to_huggingface.sh dataset
+#   HF_USER=seu_usuario bash scripts/push_to_huggingface.sh space
 #
-# Requisitos: `pip install huggingface_hub` e `hf auth login` (ou variável HF_TOKEN).
-# ============================================================
+# Requisitos
+# ----------
+#   pip install -U huggingface_hub
+#   hf auth login   OU   export HF_TOKEN=...
+#
+# Segurança
+# ---------
+# Não envie sequências GISAID nem secrets.yaml ao Hub.
+# =============================================================================
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

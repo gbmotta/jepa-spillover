@@ -1,15 +1,36 @@
-"""Benchmark de diferentes valores de k para k-mers genômicos.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — benchmark de tamanho de k-mer (k-sweep)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/kmer_sweep.py
 
-Compara k ∈ {3, 4, 5, 6} em:
-  - Variância explicada pelo PCA (128 componentes)
-  - AUROC no fine-tuning (Regressão Logística 5-fold CV)
-  - Tempo de computação
-  - Uso de RAM
+Propósito
+---------
+Compara valores de k ∈ {3,4,5,6,7,…} quanto a:
+  - variância explicada pelo PCA;
+  - AUROC (Regressão Logística, CV 5-fold) na tarefa spillover;
+  - tempo de CPU e pico de RAM (tracemalloc).
 
-Uso:
+Usado para justificar k=4 no ``config.yaml`` (melhor trade-off AUROC/memória).
+
+Entradas
+--------
+- ``data/processed/dataset.parquet``
+
+Saídas
+------
+- ``results/kmer_sweep*/kmer_sweep_results.json``
+- ``results/kmer_sweep*/kmer_sweep.png``
+
+Uso
+---
     python scripts/kmer_sweep.py
     python scripts/kmer_sweep.py --k 3 4 5 6 7 --dim 128 --max-seqs 3000
-    python scripts/kmer_sweep.py --output results/kmer_sweep
+    python scripts/kmer_sweep.py --output results/kmer_sweep_full
+=============================================================================
 """
 
 from __future__ import annotations
@@ -41,6 +62,7 @@ log = get_logger("scripts.kmer_sweep")
 # ══════════════════════════════════════════════════════════════════════════════
 
 def load_dataset(data_processed: Path, max_seqs: int | None) -> pd.DataFrame:
+    """Carrega dataset.parquet; subamostra se max_seqs for definido."""
     parquet = data_processed / "dataset.parquet"
     if not parquet.exists():
         log.error("dataset.parquet não encontrado em %s", data_processed)
@@ -64,6 +86,7 @@ def run_single_k(
     dim: int,
     chunk_size: int,
 ) -> dict:
+    """Executa k-mers→PCA→AUROC CV e mede tempo/RAM para um valor de k."""
     """Treina e avalia uma configuração k."""
     from sklearn.decomposition import IncrementalPCA
     from sklearn.linear_model import LogisticRegression
@@ -142,6 +165,7 @@ def run_single_k(
 # ══════════════════════════════════════════════════════════════════════════════
 
 def plot_results(results: list[dict], out_dir: Path) -> None:
+    """Gera figura comparativa (AUROC, var. explicada, tempo, RAM) e salva PNG."""
     df = pd.DataFrame(results)
     ks = df["k"].tolist()
 
@@ -221,6 +245,7 @@ def plot_results(results: list[dict], out_dir: Path) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main() -> None:
+    """CLI: varre valores de k, salva JSON/PNG e imprime recomendação."""
     parser = argparse.ArgumentParser(description="Benchmark k-mers")
     parser.add_argument("--k", nargs="+", type=int, default=[3, 4, 5, 6],
                         help="Valores de k a testar (default: 3 4 5 6)")
@@ -256,7 +281,7 @@ def main() -> None:
         log.info("Target: família viral (multi-classe, %d classes)", len(np.unique(labels)))
 
     results = []
-    for k in sorted(args.k):
+    for k in tqdm(sorted(args.k), desc="k-mer sweep", unit="k", ncols=90):
         log.info("\n" + "═" * 60)
         log.info("Testando k = %d  (vocab = %d features)", k, 4**k)
         log.info("═" * 60)

@@ -9,8 +9,11 @@ from typing import Any
 
 import yaml
 
+from .security import resolve_secret
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "config.yaml"
+SECRETS_FILE = PROJECT_ROOT / "config" / "secrets.yaml"
 
 
 class Config(dict):
@@ -42,6 +45,7 @@ class Config(dict):
         cfg_path = Path(path) if path else DEFAULT_CONFIG
         with open(cfg_path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh) or {}
+        data = _inject_secrets(data)
         cfg = cls(data)
         cfg["_config_path"] = str(cfg_path)
         return cfg
@@ -53,6 +57,40 @@ class Config(dict):
             raise KeyError(f"paths.{key} não definido em config")
         p = PROJECT_ROOT / rel
         return p
+
+
+def _inject_secrets(data: dict) -> dict:
+    """Mescla segredos de env / config/secrets.yaml (nunca versionar a key)."""
+    secrets: dict = {}
+    if SECRETS_FILE.exists():
+        with open(SECRETS_FILE, encoding="utf-8") as fh:
+            secrets = yaml.safe_load(fh) or {}
+
+    ncbi = data.setdefault("data_sources", {}).setdefault("ncbi_virus", {})
+    yaml_key = (
+        secrets.get("ncbi_api_key")
+        or secrets.get("data_sources", {}).get("ncbi_virus", {}).get("api_key")
+        or ncbi.get("api_key")
+    )
+    key = resolve_secret(
+        ["NCBI_API_KEY", "JEPA_NCBI_API_KEY"],
+        yaml_value=yaml_key,
+    )
+    if key:
+        ncbi["api_key"] = key
+    else:
+        ncbi.pop("api_key", None)
+
+    yaml_email = (
+        secrets.get("ncbi_email")
+        or secrets.get("data_sources", {}).get("ncbi_virus", {}).get("email")
+        or ncbi.get("email")
+    )
+    email = resolve_secret(["NCBI_EMAIL", "JEPA_NCBI_EMAIL"], yaml_value=yaml_email)
+    if email:
+        ncbi["email"] = email
+
+    return data
 
 
 def set_global_seed(seed: int) -> None:

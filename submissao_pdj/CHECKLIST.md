@@ -1,7 +1,7 @@
 # Checklist de submissão — PDJ/Fiocruz VPPCB 2026 (Bolsa Nova)
 
 **Candidato:** Gabriel Bezerra Motta Câmara
-**Supervisor:** [preencher] · **Unidade:** Instituto Aggeu Magalhães — Fiocruz PE
+**Supervisor:** Marcelo Henrique Santos Paiva · **Unidade:** Instituto Aggeu Magalhães — Fiocruz PE
 **Submissão:** sistema Fomento à Pesquisa on-line — https://fomentoapesquisa.fiocruz.br
 **Prazo de inscrição:** 9 de junho a **10 de julho de 2026**
 
@@ -9,10 +9,10 @@
 
 ---
 
-## 1. Documentos do SUPERVISOR (Túlio)
+## 1. Documentos do SUPERVISOR (Marcelo Henrique Santos Paiva)
 
 - [ ] 🟡 **Termo de inscrição on-line** (vigência 2026–2027) — assinado por supervisor **e** bolsista *(gerado no sistema)*
-- [ ] 🟡 **Projeto de pesquisa do orientador** (item 4.4.b) — 🟢 esqueleto pronto: `Projeto_Orientador_ESQUELETO.docx` → **preencher**
+- [ ] 🟡 **Projeto de pesquisa do orientador** (item 4.4.b) — 🟢 versão preenchida pronta: `Projeto_Orientador_PDJ.docx` → **revisar/ajustar com o Marcelo** *(infraestrutura em aberto)*
 - [ ] 🟡 **CV Lattes/CNPq do supervisor** — atualizado até **10/jul/2026**
 - [ ] 🟡 **Súmula da produção técnico-científica** do supervisor *(modelo no sistema)*
 
@@ -22,7 +22,7 @@
 - [ ] 🔵 **CV Lattes/CNPq do candidato** — atualizado até **10/jul/2026**
 - [ ] 🔵 **Súmula da produção técnico-científica** do candidato *(modelo no sistema)*
 - [ ] 🔵 **Comprovante de doutorado** — certificado, **ou** ata da defesa, **ou** carta do orientador com data prevista *(defesa até 30/ago/2026)*
-- [x] 🟢 **Subprojeto do candidato** (item 4.4.f) — `Subprojeto_JEPA-Spillover_PDJ.docx` ✅ *(falta preencher campos `[ ]`: nome do supervisor, título do projeto do orientador, laboratório, infraestrutura)*
+- [x] 🟢 **Subprojeto do candidato** (item 4.4.f) — `Subprojeto_JEPA-Spillover_PDJ.docx` ✅ *(em aberto: infraestrutura do laboratório; aderência da trajetória do candidato)*
 
 ## 3. Documento COMUM (obrigatório para todos)
 
@@ -36,7 +36,7 @@
 - [ ] Comitê Interno de Biossegurança (CI-BIO)
 - [ ] SISGEN
 
-> ⚠️ O subprojeto JEPA-Spillover usa **apenas dados públicos** (sem material biológico novo, sem pacientes) → em princípio **não exige** essas autorizações. **Confirmar com o Túlio** conforme o escopo do projeto maior dele.
+> ⚠️ O subprojeto JEPA-Spillover usa **apenas dados públicos** (sem material biológico novo, sem pacientes) → em princípio **não exige** essas autorizações. **Confirmar com o Marcelo** conforme o escopo do projeto maior dele.
 
 ## 5. Ações afirmativas (Anexo I — *se o candidato optar*)
 
@@ -72,5 +72,6 @@
 
 - [x] `Subprojeto_JEPA-Spillover_PDJ.docx` / `.pdf`
 - [x] `Carta_de_Anuencia_PDJ.docx` / `.pdf`
-- [x] `Projeto_Orientador_ESQUELETO.docx` / `.pdf`
+- [x] `Projeto_Orientador_PDJ.docx` / `.pdf`
+- [x] `Projeto_Orientador_ESQUELETO.docx` / `.pdf` *(modelo-base; usar a versão preenchida acima)*
 - [x] `CHECKLIST.md` (este arquivo)

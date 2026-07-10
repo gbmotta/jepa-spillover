@@ -1,16 +1,31 @@
-"""Download VirHostNet 3.0 — interações vírus-hospedeiro em PSI-MITAB 2.5.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — download VirHostNet 3.0 (PSI-MITAB)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/download_virhostnet.py
 
-Tenta em ordem:
-  1. PSICQUIC endpoint oficial (porta 9090) com paginação
-  2. Mirror da Universidade de Lyon
-  3. NDEx API (rede pública curada)
+Propósito
+---------
+Obtém interações vírus–hospedeiro via PSICQUIC (endpoint oficial → mirror
+Lyon → NDEx), em formato PSI-MITAB 2.5.
 
-Saída: data/external/virhostnet/virhostnet.mitab  (TSV MITAB 2.5)
-       data/external/virhostnet/virhostnet.parquet (versão processada)
+Saídas
+------
+- ``data/external/virhostnet/virhostnet.mitab``
+- ``data/external/virhostnet/virhostnet.parquet``
 
-Uso:
+Uso
+---
     python scripts/download_virhostnet.py
-    python scripts/download_virhostnet.py --max-rows 50000
+    python scripts/download_virhostnet.py --max-rows 50000 --debug
+
+Notas
+-----
+Endpoints externos podem ficar offline; o script tenta fallbacks em ordem.
+=============================================================================
 """
 
 from __future__ import annotations
@@ -136,7 +151,13 @@ def main() -> None:
     parser.add_argument("--max-rows", type=int, default=200_000)
     parser.add_argument("--timeout", type=int, default=30)
     parser.add_argument("--output", type=str, default=str(OUT_DIR))
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
+    if args.debug:
+        import os
+        os.environ["JEPA_LOG_LEVEL"] = "DEBUG"
+        from jepa_spillover.logger import set_log_level
+        set_log_level("DEBUG")
 
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)

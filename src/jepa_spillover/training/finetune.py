@@ -16,6 +16,7 @@ from tqdm import tqdm
 from ..config import Config, set_global_seed
 from ..evaluation.metrics import classification_metrics
 from ..logger import get_logger
+from ..security import load_npz
 
 log = get_logger(__name__)
 
@@ -36,7 +37,7 @@ def _load_embeddings(cfg: Config) -> tuple[np.ndarray, pd.DataFrame]:
 
     best_path, best_overlap = candidates[0], -1
     for path in candidates:
-        data_tmp = np.load(path, allow_pickle=True)
+        data_tmp = load_npz(path)
         acc_set = set(data_tmp["accession"].astype(str))
         overlap = df["accession"].astype(str).isin(acc_set).sum()
         log.info("Embeddings %s: %d accessions, overlap=%d", path.name, len(acc_set), overlap)
@@ -44,7 +45,7 @@ def _load_embeddings(cfg: Config) -> tuple[np.ndarray, pd.DataFrame]:
             best_overlap, best_path = overlap, path
 
     log.info("Usando %s (maior overlap: %d)", best_path.name, best_overlap)
-    data = np.load(best_path, allow_pickle=True)
+    data = load_npz(best_path)
     order = {a: i for i, a in enumerate(data["accession"].astype(str))}
     idx = df["accession"].astype(str).map(order)
 

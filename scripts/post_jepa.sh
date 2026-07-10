@@ -1,11 +1,29 @@
 #!/usr/bin/env bash
 # =============================================================================
-# post_jepa.sh — Monitora o pré-treino JEPA e executa pipeline completo ao fim
+# JEPA-Spillover — post_jepa.sh
+# =============================================================================
+# Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+# Módulo  : scripts/post_jepa.sh
 #
-# Uso:
-#   bash scripts/post_jepa.sh [JEPA_PID]
+# Propósito
+# ---------
+# Monitora um processo de pré-treino JEPA em andamento e, ao terminar,
+# executa automaticamente: features → finetune → evaluate (+ métricas / HF).
 #
-# Se JEPA_PID não for fornecido, detecta automaticamente pelo nome do processo.
+# Uso
+# ---
+#   bash scripts/post_jepa.sh              # detecta PID automaticamente
+#   bash scripts/post_jepa.sh <JEPA_PID>   # PID explícito do python train
+#
+# Logs
+# ----
+#   results/post_jepa.log
+#
+# Nota
+# ----
+# Prefira passar o PID do processo ``python -m jepa_spillover.cli train``
+# (não o shell wrapper). Alternativa moderna: o watcher em
+# logs/post_train_pipeline.log iniciado junto com o treino.
 # =============================================================================
 set -euo pipefail
 

@@ -1,13 +1,16 @@
 """Configuração centralizada de logging para o JEPA-Spillover.
 
 Uso:
-    from jepa_spillover.logger import get_logger
+    from jepa_spillover.logger import get_logger, set_log_level
     log = get_logger(__name__)
     log.info("mensagem")
     log.debug("detalhe")
 
 O nível é controlado pela variável de ambiente JEPA_LOG_LEVEL (default: INFO).
 Um arquivo de log rotativo é criado em logs/jepa_spillover.log.
+
+Para ativar DEBUG depois do import (ex.: --debug na CLI):
+    set_log_level("DEBUG")
 """
 
 from __future__ import annotations
@@ -55,6 +58,21 @@ def _setup() -> None:
             root.addHandler(fh)
         except OSError:
             pass  # filesystem read-only (ex.: CI/CD)
+
+
+def set_log_level(level: str) -> None:
+    """Atualiza o nível de log em runtime (útil para --debug após imports)."""
+    global _LOG_LEVEL
+    _LOG_LEVEL = level.upper()
+    os.environ["JEPA_LOG_LEVEL"] = _LOG_LEVEL
+    lvl = getattr(logging, _LOG_LEVEL, logging.INFO)
+    _setup()
+    root = logging.getLogger("jepa_spillover")
+    root.setLevel(lvl)
+    for handler in root.handlers:
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
+            continue  # arquivo permanece em DEBUG
+        handler.setLevel(lvl)
 
 
 class _ColorFormatter(logging.Formatter):

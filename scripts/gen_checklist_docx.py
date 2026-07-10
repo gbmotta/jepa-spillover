@@ -1,11 +1,34 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Gera o CHECKLIST de submissão (Edital PDJ/Fiocruz VPPCB 2026) em .docx,
-com caixas de marcação, para acompanhamento e compartilhamento.
+=============================================================================
+JEPA-Spillover — gerador do Checklist de submissão PDJ
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/gen_checklist_docx.py
 
-Saída: submissao_pdj/Checklist_Submissao_PDJ.docx (+ PDF via LibreOffice)
+Propósito
+---------
+Gera checklist Word com caixas de marcação (SUP / CAND / PRONTO) para
+acompanhar a submissão ao Edital PDJ/Fiocruz VPPCB 2026.
+
+Saídas
+------
+- ``submissao_pdj/Checklist_Submissao_PDJ.docx``
+
+Uso
+---
+    python scripts/gen_checklist_docx.py
+
+Ver também
+----------
+``submissao_pdj/CHECKLIST.md`` (versão Markdown espelhada).
+=============================================================================
 """
+
 from __future__ import annotations
+
+import logging
 
 from pathlib import Path
 
@@ -16,6 +39,8 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Cm
 
 ROOT = Path(__file__).resolve().parents[1]
+log = logging.getLogger("scripts.gen_checklist_docx")
+
 OUT = ROOT / "submissao_pdj" / "Checklist_Submissao_PDJ.docx"
 
 AZUL = RGBColor(0x1F, 0x39, 0x64)
@@ -92,6 +117,7 @@ def make_table(doc, headers, rows, widths=None, font_size=9.5):
 
 
 def build():
+    """Monta e salva o Checklist de submissão PDJ com caixas SUP/CAND/PRONTO."""
     doc = Document()
     normal = doc.styles["Normal"]
     normal.font.name = "Calibri"
@@ -120,7 +146,7 @@ def build():
 
     # Info
     for txt in [
-        "Candidato: Gabriel Bezerra Motta Câmara   |   Supervisor: [preencher]",
+        "Candidato: Gabriel Bezerra Motta Câmara   |   Supervisor: Marcelo Henrique Santos Paiva",
         "Submissão: sistema Fomento à Pesquisa on-line (fomentoapesquisa.fiocruz.br)",
         "Prazo de inscrição: 9 de junho a 10 de julho de 2026",
     ]:
@@ -130,9 +156,9 @@ def build():
          size=8.5, italic=True, color=CINZA)
 
     # 1. Supervisor
-    h1(doc, "1. Documentos do Supervisor (Túlio)")
+    h1(doc, "1. Documentos do Supervisor (Marcelo Henrique Santos Paiva)")
     check(doc, "Termo de inscrição on-line (2026–2027) — assinado por supervisor E bolsista (gerado no sistema)", tag="SUP")
-    check(doc, "Projeto de pesquisa do orientador (item 4.4.b) — esqueleto pronto: Projeto_Orientador_ESQUELETO.docx → preencher", tag="SUP")
+    check(doc, "Projeto de pesquisa do orientador (item 4.4.b) — versão preenchida pronta: Projeto_Orientador_PDJ.docx (revisar/ajustar com o Marcelo; infraestrutura em aberto)", tag="PRONTO")
     check(doc, "CV Lattes/CNPq do supervisor — atualizado até 10/jul/2026", tag="SUP")
     check(doc, "Súmula da produção técnico-científica do supervisor (modelo no sistema)", tag="SUP")
 
@@ -156,7 +182,7 @@ def build():
         check(doc, t)
     para(doc,
          "Observação: o subprojeto JEPA-Spillover usa apenas dados públicos (sem material biológico "
-         "novo, sem pacientes) → em princípio não exige essas autorizações. Confirmar com o Túlio "
+         "novo, sem pacientes) → em princípio não exige essas autorizações. Confirmar com o Marcelo "
          "conforme o escopo do projeto maior.",
          size=9, italic=True, color=CINZA)
 
@@ -186,8 +212,10 @@ def build():
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUT)
+    log.info("Documento gerado: %s", OUT)
     print(f"OK: {OUT}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
     build()

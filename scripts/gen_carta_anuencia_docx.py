@@ -1,14 +1,40 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Gera o modelo de CARTA DE ANUÊNCIA exigida no item 4.5 do Edital PDJ/Fiocruz
-VPPCB 2026 (anuência da chefia do laboratório/departamento/líder do grupo).
+=============================================================================
+JEPA-Spillover — gerador da Carta de Anuência (PDJ item 4.5)
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/gen_carta_anuencia_docx.py
 
-O edital NÃO fornece modelo oficial de anuência; este é um modelo formal,
-em uma página, com campos entre [ ] para preenchimento e assinatura.
+Propósito
+---------
+Gera modelo formal de carta de anuência da chefia do laboratório/grupo.
+O edital **não** fornece modelo oficial.
 
-Saída: submissao_pdj/Carta_de_Anuencia_PDJ.docx (+ PDF via LibreOffice)
+Conteúdo pré-preenchido
+-----------------------
+- Laboratório de Entomologia (IAM)
+- Supervisor: Marcelo Henrique Santos Paiva
+- Candidato: Gabriel Bezerra Motta Câmara
+
+Ainda em aberto (assinatura)
+----------------------------
+Nome/cargo da chefia, data, carimbo.
+
+Saídas
+------
+- ``submissao_pdj/Carta_de_Anuencia_PDJ.docx``
+
+Uso
+---
+    python scripts/gen_carta_anuencia_docx.py
+=============================================================================
 """
+
 from __future__ import annotations
+
+import logging
 
 from pathlib import Path
 
@@ -17,6 +43,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, RGBColor, Cm
 
 ROOT = Path(__file__).resolve().parents[1]
+log = logging.getLogger("scripts.gen_carta_anuencia_docx")
+
 OUT = ROOT / "submissao_pdj" / "Carta_de_Anuencia_PDJ.docx"
 
 AZUL = RGBColor(0x1F, 0x39, 0x64)
@@ -37,6 +65,7 @@ def para(doc, text, size=11, justify=True, italic=False, color=None, bold=False,
 
 
 def build():
+    """Monta e salva a Carta de Anuência (Lab. de Entomologia / supervisor Marcelo)."""
     doc = Document()
     normal = doc.styles["Normal"]
     normal.font.name = "Calibri"
@@ -54,7 +83,7 @@ def build():
     for txt, sz, bold, color in [
         ("FUNDAÇÃO OSWALDO CRUZ — FIOCRUZ", 12, True, AZUL),
         ("Instituto Aggeu Magalhães (IAM) — Fiocruz Pernambuco", 11, False, CINZA),
-        ("[Laboratório / Departamento / Grupo de Pesquisa]", 10, False, CINZA),
+        ("Laboratório de Entomologia", 10, False, CINZA),
     ]:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -101,12 +130,12 @@ def build():
 
     para(doc,
          "Na qualidade de [cargo — ex.: chefe do Laboratório / chefe do Departamento / "
-         "líder do Grupo de Pesquisa] do(a) [nome do laboratório / departamento / grupo] "
+         "líder do Grupo de Pesquisa] do Laboratório de Entomologia "
          "do Instituto Aggeu Magalhães (IAM) — Fiocruz Pernambuco, declaro estar CIENTE e "
          "DE ACORDO com a realização do subprojeto intitulado \u201cJEPA-Spillover: "
          "aprendizado preditivo em espaço latente para vigilância genômica de vírus com "
          "potencial zoonótico\u201d, a ser desenvolvido pelo(a) candidato(a) Gabriel Bezerra "
-         "Motta Câmara, sob supervisão do(a) Prof.(a) [nome do(a) supervisor(a)], no âmbito "
+         "Motta Câmara, sob supervisão do(a) Prof.(a) Marcelo Henrique Santos Paiva, no âmbito "
          "do Edital de Pós-Doutorado Júnior (PDJ) da VPPCB/Fiocruz, vigência 2026–2027.",
          space_after=10)
 
@@ -134,7 +163,7 @@ def build():
     for txt in [
         "[Nome completo da chefia / líder do grupo]",
         "[Cargo / função]",
-        "[Laboratório / Departamento / Grupo de Pesquisa]",
+        "Laboratório de Entomologia",
         "Instituto Aggeu Magalhães — Fiocruz Pernambuco",
         "[Carimbo institucional, se aplicável]",
     ]:
@@ -159,8 +188,10 @@ def build():
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUT)
+    log.info("Documento gerado: %s", OUT)
     print(f"OK: {OUT}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
     build()

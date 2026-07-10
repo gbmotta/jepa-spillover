@@ -83,3 +83,6 @@ Thumbs.db
 .env
 *.key
 secrets.yaml
+config/secrets.yaml
+**/secrets.yaml
+!config/secrets.yaml.example

@@ -1,4 +1,35 @@
-"""Utilidades compartilhadas pelos scripts de download."""
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=============================================================================
+JEPA-Spillover — utilidades compartilhadas dos scripts de download
+=============================================================================
+Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+Módulo  : scripts/_utils.py
+
+Propósito
+---------
+Funções comuns a todos os scripts de coleta de dados externos:
+  - download HTTP(S)/FTP com barra tqdm e timeout;
+  - checksum SHA-256 com progresso;
+  - manifesto JSON de proveniência (reprodutibilidade / auditoria).
+
+Segurança
+---------
+- URLs validadas via ``jepa_spillover.security.assert_safe_url``
+  (apenas esquemas http, https, ftp).
+- Timeouts explícitos em requests (evita hang indefinido).
+
+Uso (importado pelos demais scripts)
+------------------------------------
+    from _utils import PROJECT_ROOT, download_file, write_manifest, sha256_of
+
+Variáveis de ambiente
+---------------------
+    JEPA_LOG_LEVEL  — INFO (default) | DEBUG | WARNING | ERROR
+
+=============================================================================
+"""
 
 from __future__ import annotations
 
@@ -20,6 +51,20 @@ log = get_logger("scripts.utils")
 
 
 def sha256_of(path: Path, chunk: int = 1 << 20) -> str:
+    """Calcula SHA-256 de um arquivo em streaming (não carrega tudo na RAM).
+
+    Parameters
+    ----------
+    path :
+        Arquivo local existente.
+    chunk :
+        Tamanho do bloco de leitura em bytes (default 1 MiB).
+
+    Returns
+    -------
+    str
+        Digest hexadecimal de 64 caracteres.
+    """
     h = hashlib.sha256()
     total = path.stat().st_size
     with open(path, "rb") as fh:
@@ -32,6 +77,28 @@ def sha256_of(path: Path, chunk: int = 1 << 20) -> str:
 
 
 def write_manifest(target: Path, *, source_url: str, n_records: int | None = None, **extra) -> Path:
+    """Grava manifesto JSON ao lado do arquivo baixado (proveniência).
+
+    O manifesto inclui URL de origem, timestamp UTC, tamanho, SHA-256 e
+    metadados extras (família viral, batch, etc.). Essencial para auditoria
+    e para saber se um re-download é necessário.
+
+    Parameters
+    ----------
+    target :
+        Arquivo de dados (ex.: ``Coronaviridae.fasta``).
+    source_url :
+        URL canônica de origem.
+    n_records :
+        Número de registros (ex.: sequências FASTA), se conhecido.
+    **extra :
+        Campos adicionais serializados no JSON.
+
+    Returns
+    -------
+    Path
+        Caminho do manifesto (``<arquivo>.manifest.json``).
+    """
     manifest = {
         "file": target.name,
         "source_url": source_url,
@@ -48,7 +115,34 @@ def write_manifest(target: Path, *, source_url: str, n_records: int | None = Non
 
 
 def download_file(url: str, target: Path, *, chunk: int = 1 << 16, timeout: int = 120) -> Path:
-    """Baixa um arquivo em streaming com barra de progresso tqdm."""
+    """Baixa um arquivo em streaming com barra de progresso tqdm.
+
+    Parameters
+    ----------
+    url :
+        URL http(s)/ftp (outros esquemas são rejeitados).
+    target :
+        Caminho de destino local.
+    chunk :
+        Tamanho do bloco de escrita.
+    timeout :
+        Timeout total da conexão/leitura em segundos.
+
+    Returns
+    -------
+    Path
+        O mesmo ``target``, após download bem-sucedido.
+
+    Raises
+    ------
+    ValueError
+        Se o esquema da URL for inválido.
+    requests.HTTPError
+        Se a resposta HTTP não for 2xx.
+    """
+    from jepa_spillover.security import assert_safe_url
+
+    assert_safe_url(url)
     target.parent.mkdir(parents=True, exist_ok=True)
     log.info("Iniciando download: %s → %s", url, target)
 

@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from ..config import Config
 from ..logger import get_logger
+from ..security import load_npz
 
 log = get_logger(__name__)
 
@@ -53,13 +54,13 @@ def build_ranking(config_path: str | None = None) -> Path:
         raise FileNotFoundError("Nenhum arquivo de embeddings encontrado.")
     best_path, best_overlap = candidates[0], -1
     for path in candidates:
-        d_tmp = np.load(path, allow_pickle=True)
+        d_tmp = load_npz(path)
         ov = df["accession"].astype(str).isin(set(d_tmp["accession"].astype(str))).sum()
         if ov > best_overlap:
             best_overlap, best_path = ov, path
     log.info("Usando embeddings: %s (overlap=%d)", best_path.name, best_overlap)
 
-    data = np.load(best_path, allow_pickle=True)
+    data = load_npz(best_path)
     order = {a: i for i, a in enumerate(data["accession"].astype(str))}
     idx_series = df["accession"].astype(str).map(order)
     valid = idx_series.notna()

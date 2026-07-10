@@ -24,8 +24,11 @@ paths:
 # ------------------------------------------------------------
 data_sources:
   ncbi_virus:
-    email: "gmottaz@gmail.com"   # exigido pela API Entrez do NCBI
-    api_key: cd1a6ee372855eb9f6524eb1c26888adb408                     # opcional; aumenta o limite de requisições
+    # Segredos NÃO ficam aqui. Use:
+    #   export NCBI_API_KEY=...   e/ou   config/secrets.yaml  (gitignored)
+    #   export NCBI_EMAIL=seu@email.com
+    email: "gmottaz@gmail.com"   # público/identificação Entrez (pode ir no secrets.yaml)
+    api_key: null                # NUNCA versionar a key — ver config/secrets.yaml.example
     # Famílias priorizadas (RNA, relevância zoonótica documentada)
     families:
       - Coronaviridae

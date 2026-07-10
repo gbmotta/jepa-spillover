@@ -1,12 +1,32 @@
 #!/usr/bin/env bash
-# ============================================================
-# Executa o pipeline JEPA-Spillover de ponta a ponta.
+# =============================================================================
+# JEPA-Spillover — run_pipeline.sh
+# =============================================================================
+# Projeto : JEPA-Spillover (PDJ / IAM — Fiocruz PE)
+# Módulo  : scripts/run_pipeline.sh
 #
-# Uso:
-#   bash scripts/run_pipeline.sh            # usa dados reais se existirem; senão, sintéticos
-#   DEMO=1 bash scripts/run_pipeline.sh     # força demonstração com dados sintéticos
-#   SKIP_TRAIN=1 bash scripts/run_pipeline.sh  # pula o pré-treino JEPA (usa k-mer/PCA)
-# ============================================================
+# Propósito
+# ---------
+# Executa o pipeline de ponta a ponta:
+#   (dados) → curate → features → [train JEPA] → finetune → evaluate
+#
+# Se não houver FASTA em data/raw/ncbi_virus/, gera dataset sintético
+# (ou force com DEMO=1).
+#
+# Variáveis de ambiente
+# ---------------------
+#   CONFIG      — caminho do config.yaml (default: config/config.yaml)
+#   PYTHON      — interpretador (default: python)
+#   DEMO=1      — força dados sintéticos
+#   SKIP_TRAIN=1 — pula pré-treino JEPA (usa só k-mer/PCA)
+#
+# Uso
+# ---
+#   bash scripts/run_pipeline.sh
+#   DEMO=1 bash scripts/run_pipeline.sh
+#   SKIP_TRAIN=1 bash scripts/run_pipeline.sh
+#
+# =============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,4 +70,5 @@ echo ""
 echo "============================================================"
 echo " Concluído. Resultados em results/ e data/processed/."
 echo " Visualize com: make dashboard"
+echo " Validação biológica: python scripts/validate_biology.py"
 echo "============================================================"

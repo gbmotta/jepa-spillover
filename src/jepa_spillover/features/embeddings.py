@@ -10,6 +10,7 @@ Gera ``data/processed/embeddings.npz`` com a matriz de embeddings e os accession
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -78,8 +79,12 @@ def transformer_embeddings(sequences, *, model_name: str, device: str) -> np.nda
     from transformers import AutoModel, AutoTokenizer
 
     log.info("Carregando modelo Transformer: %s (device=%s)", model_name, device)
-    tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModel.from_pretrained(model_name, trust_remote_code=True).to(device).eval()
+    # trust_remote_code só para modelos pinados/confiáveis (ex.: InstaDeepAI).
+    allow_remote = os.environ.get("JEPA_TRUST_REMOTE_CODE", "0") == "1"
+    if allow_remote:
+        log.warning("JEPA_TRUST_REMOTE_CODE=1 — executando código remoto do Hub")
+    tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=allow_remote)
+    model = AutoModel.from_pretrained(model_name, trust_remote_code=allow_remote).to(device).eval()
     out = []
     with torch.no_grad():
         for seq in tqdm(sequences, desc="Transformer emb", unit="seq", ncols=90):
@@ -117,6 +122,6 @@ def build_embeddings(config_path: str | None = None) -> Path:
         emb = kmer_pca_embeddings(sequences, k=k, dim=dim, seed=seed, chunk_size=pca_chunk)
 
     out = cfg.resolve("data_processed") / "embeddings.npz"
-    np.savez_compressed(out, embeddings=emb, accession=df["accession"].to_numpy())
+    np.savez_compressed(out, embeddings=emb, accession=df["accession"].astype(str).to_numpy())
     log.info("Embeddings salvos: %s — shape %s", out, emb.shape)
     return out

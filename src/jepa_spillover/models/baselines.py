@@ -10,6 +10,11 @@ from __future__ import annotations
 import numpy as np
 import torch
 import torch.nn as nn
+from tqdm import tqdm
+
+from ..logger import get_logger
+
+log = get_logger(__name__)
 
 
 def build_sklearn_baseline(kind: str = "logreg", seed: int = 42):
@@ -66,8 +71,10 @@ def train_torch_classifier(model, X, y, *, epochs=10, lr=1e-3, batch_size=32, de
     y_t = torch.as_tensor(np.asarray(y), dtype=torch.long)
     ds = torch.utils.data.TensorDataset(X_t, y_t)
     dl = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True)
+    log.info("Baseline torch: epochs=%d batch=%d device=%s n=%d", epochs, batch_size, device, len(ds))
     model.train()
-    for ep in range(epochs):
+    epoch_bar = tqdm(range(epochs), desc="Baseline epochs", unit="ep", ncols=90)
+    for ep in epoch_bar:
         total = 0.0
         for xb, yb in dl:
             xb, yb = xb.to(device), yb.to(device)
@@ -76,5 +83,8 @@ def train_torch_classifier(model, X, y, *, epochs=10, lr=1e-3, batch_size=32, de
             loss.backward()
             opt.step()
             total += loss.item()
-        print(f"    epoch {ep + 1}/{epochs}  loss={total / len(dl):.4f}")
+        avg = total / max(1, len(dl))
+        epoch_bar.set_postfix(loss=f"{avg:.4f}")
+        log.debug("baseline epoch %d/%d loss=%.4f", ep + 1, epochs, avg)
+    log.info("Baseline treinado — última loss=%.4f", avg)
     return model
